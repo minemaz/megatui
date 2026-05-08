@@ -1,0 +1,30 @@
+                                     
+    Number of enclosures on adapter 0 -- 1
+
+    Enclosure 0:
+    Device ID                     : 252
+    Number of Slots               : 8
+    Number of Power Supplies      : 0
+    Number of Fans                : 0
+    Number of Temperature Sensors : 0
+    Number of Alarms              : 0
+    Number of SIM Modules         : 1
+    Number of Physical Drives     : 0
+    Status                        : Normal
+    Position                      : 1
+    Connector Name                : Unavailable
+    Enclosure type                : SGPIO
+    FRU Part Number               : N/A
+    Enclosure Serial Number       : N/A 
+    ESM Serial Number             : N/A 
+    Enclosure Zoning Mode         : N/A 
+    Partner Device Id             : Unavailable
+
+    Inquiry data                  :
+        Vendor Identification     : LSI     
+        Product Identification    : SGPIO           
+        Product Revision Level    : N/A 
+        Vendor Specific           :                     
+
+
+Exit Code: 0x00

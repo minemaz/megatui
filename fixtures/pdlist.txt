@@ -1,0 +1,21 @@
+                                     
+Adapter #0
+
+Device Id: 0
+Inquiry Data: HP      Ultrium 4-SCSI  U2CD       $DR-10       
+SCSI Device Type : Tape
+Interface Type: SAS
+Link Speed: Unknown 
+
+
+
+Device Id: 1
+Inquiry Data: HP      Ultrium 5-SCSI  Z5AD       $DR-10       
+SCSI Device Type : Tape
+Interface Type: SAS
+Link Speed: Unknown 
+
+
+
+
+Exit Code: 0x00
