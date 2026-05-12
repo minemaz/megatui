@@ -112,12 +112,69 @@ def _build_pd_create_r0(pd: PhysicalDrive) -> list[str]:
     return ["-CfgLdAdd", "-r0", _physdrv(pd), f"-a{pd.adapter}"]
 
 
+# --------------------------------------------------------------------------- #
+# PD state predicates — gate which actions a menu surfaces.
+# --------------------------------------------------------------------------- #
+
+def _pd_state_lc(pd: PhysicalDrive) -> str:
+    return (pd.state or "").lower()
+
+
+def _pd_has_foreign(pd: PhysicalDrive) -> bool:
+    return (pd.foreign_state or "").strip().lower() not in {"", "none"}
+
+
 def _pd_is_unconfigured_good(pd: PhysicalDrive) -> bool:
-    state = (pd.state or "").lower()
-    if "unconfigured(good)" not in state and "unconfigured (good)" not in state:
+    s = _pd_state_lc(pd)
+    if "unconfigured(good)" not in s and "unconfigured (good)" not in s:
         return False
-    foreign = (pd.foreign_state or "").strip().lower()
-    return foreign in {"", "none"}
+    return not _pd_has_foreign(pd)
+
+
+def _pd_is_unconfigured_bad(pd: PhysicalDrive) -> bool:
+    s = _pd_state_lc(pd)
+    return "unconfigured(bad)" in s or "unconfigured (bad)" in s
+
+
+def _pd_is_online(pd: PhysicalDrive) -> bool:
+    return "online" in _pd_state_lc(pd)
+
+
+def _pd_is_offline(pd: PhysicalDrive) -> bool:
+    return "offline" in _pd_state_lc(pd)
+
+
+def _pd_is_failed(pd: PhysicalDrive) -> bool:
+    return "failed" in _pd_state_lc(pd)
+
+
+def _pd_is_rebuilding(pd: PhysicalDrive) -> bool:
+    return "rebuild" in _pd_state_lc(pd)
+
+
+def _pd_is_hotspare(pd: PhysicalDrive) -> bool:
+    s = _pd_state_lc(pd)
+    return "hotspare" in s or "hot spare" in s
+
+
+def _pd_recoverable(pd: PhysicalDrive) -> bool:
+    """Targets where 'Make Good' would do something useful."""
+    return _pd_is_failed(pd) or _pd_is_unconfigured_bad(pd) or _pd_has_foreign(pd)
+
+
+def _pd_rebuildable(pd: PhysicalDrive) -> bool:
+    """Drives that can be re-introduced to an array via manual rebuild start."""
+    return _pd_is_failed(pd) or _pd_is_offline(pd) or _pd_is_unconfigured_bad(pd)
+
+
+def _pd_can_make_bad(pd: PhysicalDrive) -> bool:
+    """Force-fail makes sense on healthy or pseudo-healthy drives only."""
+    return _pd_is_online(pd) or _pd_is_unconfigured_good(pd) or _pd_is_hotspare(pd)
+
+
+def _pd_clearable(pd: PhysicalDrive) -> bool:
+    """PD Clear (full wipe) — gate to drives outside any VD."""
+    return _pd_is_unconfigured_good(pd) or _pd_is_unconfigured_bad(pd)
 
 
 PD_ACTIONS: list[Action] = [
@@ -128,28 +185,38 @@ PD_ACTIONS: list[Action] = [
     Action("rebuild_progress", "Rebuild progress", "safe", "pd", _build_pd_rebuild_progress,
            "Show current rebuild percentage / ETA."),
     Action("hsp_set", "Set as Global Hot Spare", "write", "pd", _build_hsp_set,
-           "Configure this drive as a global hot spare."),
+           "Configure this drive as a global hot spare.",
+           applicable=_pd_is_unconfigured_good),
     Action("hsp_remove", "Remove Hot Spare role", "write", "pd", _build_hsp_remove,
-           "Demote this hot spare back to Unconfigured Good."),
+           "Demote this hot spare back to Unconfigured Good.",
+           applicable=_pd_is_hotspare),
     Action("pd_online", "PD Online", "write", "pd", _build_pd_online,
-           "Force the drive online (use only if firmware state allows)."),
+           "Force the drive online (use only if firmware state allows).",
+           applicable=_pd_is_offline),
     Action("pd_make_good", "PD Make Good", "write", "pd", _build_pd_make_good,
-           "Mark a foreign / failed drive as Unconfigured Good."),
+           "Mark a foreign / failed drive as Unconfigured Good.",
+           applicable=_pd_recoverable),
     Action("rebuild_start", "Start rebuild", "write", "pd", _build_pd_rebuild_start,
-           "Manually initiate rebuild on this drive."),
+           "Manually initiate rebuild on this drive.",
+           applicable=_pd_rebuildable),
     Action("rebuild_stop", "Stop rebuild", "destructive", "pd", _build_pd_rebuild_stop,
-           "Abort an in-progress rebuild — array stays degraded."),
+           "Abort an in-progress rebuild — array stays degraded.",
+           applicable=_pd_is_rebuilding),
     Action("pd_offline", "PD Offline", "destructive", "pd", _build_pd_offline,
-           "Force the drive offline. Removes redundancy if last good copy."),
+           "Force the drive offline. Removes redundancy if last good copy.",
+           applicable=_pd_is_online),
     Action("pd_mark_missing", "Mark Missing", "destructive", "pd", _build_pd_mark_missing,
-           "Mark drive missing (precondition for replace-missing)."),
+           "Mark drive missing (precondition for replace-missing).",
+           applicable=_pd_is_offline),
     Action("pd_make_bad", "PD Make Bad", "destructive", "pd", _build_pd_make_bad,
-           "Force the drive into a Bad state (Failed)."),
+           "Force the drive into a Bad state (Failed).",
+           applicable=_pd_can_make_bad),
     Action("pd_clear_progress", "PD Clear progress", "safe", "pd", _build_pd_clear_progress,
            "Show progress of an in-progress PD Clear."),
     Action("pd_clear", "PD Clear (WIPE DATA)", "catastrophic", "pd", _build_pd_clear_start,
            "Initialise/erase the entire physical drive contents.",
-           confirm_phrase="WIPE"),
+           confirm_phrase="WIPE",
+           applicable=_pd_clearable),
     Action("pd_create_r0", "Create single-disk RAID0 VD", "destructive", "pd",
            _build_pd_create_r0,
            "Wrap this drive in a new RAID0 logical drive (1 disk). Existing data is lost.",

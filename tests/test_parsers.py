@@ -128,6 +128,86 @@ def test_pd_create_r0_action_gating() -> None:
     assert "pd_create_r0" not in keys
 
 
+def _keys_for_state(state: str, *, foreign: str = "None") -> set[str]:
+    pd = parsers.PhysicalDrive()
+    pd.raw["Firmware state"] = state
+    pd.raw["Foreign State"] = foreign
+    pd.raw["Enclosure Device ID"] = "252"
+    pd.raw["Slot Number"] = "0"
+    return {a.key for a in actions.applicable_actions("pd", pd)}
+
+
+def test_pd_action_gating_by_state() -> None:
+    """Each PD action only appears for sensible state(s)."""
+    online = _keys_for_state("Online, Spun Up")
+    assert "pd_offline" in online
+    assert "pd_make_bad" in online
+    assert "pd_online" not in online           # already online
+    assert "hsp_set" not in online             # not Unconfigured(good)
+    assert "hsp_remove" not in online
+    assert "pd_make_good" not in online        # nothing to recover
+    assert "rebuild_start" not in online
+    assert "rebuild_stop" not in online
+    assert "pd_mark_missing" not in online
+    assert "pd_clear" not in online            # safety: protect VD member
+    assert "pd_create_r0" not in online
+
+    ucfg_good = _keys_for_state("Unconfigured(good), Spun Up")
+    assert "hsp_set" in ucfg_good
+    assert "pd_create_r0" in ucfg_good
+    assert "pd_clear" in ucfg_good
+    assert "pd_make_bad" in ucfg_good
+    assert "pd_offline" not in ucfg_good
+    assert "pd_make_good" not in ucfg_good     # already good
+
+    failed = _keys_for_state("Failed")
+    assert "pd_make_good" in failed            # recovery
+    assert "rebuild_start" in failed
+    assert "pd_offline" not in failed
+    assert "pd_make_bad" not in failed         # already failed
+    assert "pd_clear" not in failed
+    assert "hsp_set" not in failed
+    assert "pd_create_r0" not in failed
+
+    offline = _keys_for_state("Offline")
+    assert "pd_online" in offline
+    assert "pd_mark_missing" in offline
+    assert "rebuild_start" in offline
+    assert "pd_offline" not in offline
+    assert "pd_make_bad" not in offline
+
+    rebuild = _keys_for_state("Rebuild")
+    assert "rebuild_stop" in rebuild
+    assert "rebuild_start" not in rebuild
+    assert "pd_clear" not in rebuild
+    assert "pd_create_r0" not in rebuild
+
+    hsp = _keys_for_state("Hotspare, Spun down")
+    assert "hsp_remove" in hsp
+    assert "hsp_set" not in hsp
+    assert "pd_create_r0" not in hsp
+    assert "pd_make_bad" in hsp                # demoting via Make Bad is legitimate
+
+    foreign = _keys_for_state("Unconfigured(good), Spun Up", foreign="Foreign")
+    assert "pd_make_good" in foreign           # has foreign → recoverable
+    assert "pd_create_r0" not in foreign       # foreign present → block create
+    assert "hsp_set" not in foreign            # has foreign → not eligible
+
+    ucfg_bad = _keys_for_state("Unconfigured(bad)")
+    assert "pd_make_good" in ucfg_bad
+    assert "pd_clear" in ucfg_bad
+    assert "rebuild_start" in ucfg_bad
+    assert "pd_create_r0" not in ucfg_bad
+
+    # Always-on actions: locate/progress
+    for st in ("Online, Spun Up", "Failed", "Hotspare, Spun down", "Rebuild"):
+        ks = _keys_for_state(st)
+        assert "locate_on" in ks
+        assert "locate_off" in ks
+        assert "rebuild_progress" in ks
+        assert "pd_clear_progress" in ks
+
+
 def test_bbu_present() -> None:
     statuses = parsers.parse_bbu(read("bbu_present.txt"))
     assert len(statuses) == 1
@@ -149,5 +229,6 @@ if __name__ == "__main__":
     test_ldinfo_raid5()
     test_pdlist_mixed_hdd_tape()
     test_pd_create_r0_action_gating()
+    test_pd_action_gating_by_state()
     test_bbu_present()
     print("all parser tests OK")
