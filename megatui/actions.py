@@ -32,6 +32,7 @@ class Action:
     build: Callable[..., list[str]]
     summary: str = ""  # short help line in confirmation dialog
     confirm_phrase: str = ""  # if non-empty, user must type this verbatim
+    applicable: Callable[..., bool] | None = None  # gate visibility by target state
 
 
 # --------------------------------------------------------------------------- #
@@ -107,6 +108,18 @@ def _build_pd_clear_progress(pd: PhysicalDrive) -> list[str]:
     return ["-PDClear", "-ShowProg", "-PhysDrv", _physdrv(pd), f"-a{pd.adapter}"]
 
 
+def _build_pd_create_r0(pd: PhysicalDrive) -> list[str]:
+    return ["-CfgLdAdd", "-r0", _physdrv(pd), f"-a{pd.adapter}"]
+
+
+def _pd_is_unconfigured_good(pd: PhysicalDrive) -> bool:
+    state = (pd.state or "").lower()
+    if "unconfigured(good)" not in state and "unconfigured (good)" not in state:
+        return False
+    foreign = (pd.foreign_state or "").strip().lower()
+    return foreign in {"", "none"}
+
+
 PD_ACTIONS: list[Action] = [
     Action("locate_on", "Locate LED ON", "safe", "pd", _build_locate_on,
            "Blink the slot LED to physically locate the drive."),
@@ -137,6 +150,10 @@ PD_ACTIONS: list[Action] = [
     Action("pd_clear", "PD Clear (WIPE DATA)", "catastrophic", "pd", _build_pd_clear_start,
            "Initialise/erase the entire physical drive contents.",
            confirm_phrase="WIPE"),
+    Action("pd_create_r0", "Create single-disk RAID0 VD", "destructive", "pd",
+           _build_pd_create_r0,
+           "Wrap this drive in a new RAID0 logical drive (1 disk). Existing data is lost.",
+           applicable=_pd_is_unconfigured_good),
 ]
 
 
@@ -319,3 +336,12 @@ def actions_for(kind: TargetKind) -> list[Action]:
     if kind == "ld":
         return LD_ACTIONS
     return ADAPTER_ACTIONS
+
+
+def applicable_actions(kind: TargetKind, target: object) -> list[Action]:
+    """Return only actions whose `applicable` predicate (if any) accepts target."""
+    out: list[Action] = []
+    for a in actions_for(kind):
+        if a.applicable is None or a.applicable(target):
+            out.append(a)
+    return out

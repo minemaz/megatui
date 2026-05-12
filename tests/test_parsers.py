@@ -5,7 +5,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from megatui import parsers  # noqa: E402
+from megatui import actions, parsers  # noqa: E402
 
 FIX = ROOT / "fixtures"
 
@@ -103,6 +103,31 @@ def test_pdlist_mixed_hdd_tape() -> None:
     assert "Ultrium 5" in pds[2].inquiry
 
 
+def test_pd_create_r0_action_gating() -> None:
+    """Action 'pd_create_r0' must only surface for Unconfigured(good) PDs."""
+    pds = parsers.parse_pdlist(read("pdlist_mixed_hdd_tape.txt"))
+    # HDD slot 2 is Unconfigured(good) → should expose the create-RAID0 action
+    hdd = next(p for p in pds if "NETAPP" in p.inquiry)
+    pd_actions = actions.applicable_actions("pd", hdd)
+    keys = {a.key for a in pd_actions}
+    assert "pd_create_r0" in keys
+    # Verify the produced argv is exactly the single-disk RAID0 form.
+    create = next(a for a in pd_actions if a.key == "pd_create_r0")
+    argv = create.build(hdd)
+    assert argv == ["-CfgLdAdd", "-r0", "[252:2]", "-a0"], argv
+
+    # An Online HDD (from synthetic fixture) must NOT see the create action.
+    online_pds = parsers.parse_pdlist(read("pdlist_hdd.txt"))
+    online = next(p for p in online_pds if p.state.startswith("Online"))
+    keys = {a.key for a in actions.applicable_actions("pd", online)}
+    assert "pd_create_r0" not in keys
+
+    # Hotspare → also excluded.
+    hsp = next(p for p in online_pds if p.state.startswith("Hotspare"))
+    keys = {a.key for a in actions.applicable_actions("pd", hsp)}
+    assert "pd_create_r0" not in keys
+
+
 def test_bbu_present() -> None:
     statuses = parsers.parse_bbu(read("bbu_present.txt"))
     assert len(statuses) == 1
@@ -123,5 +148,6 @@ if __name__ == "__main__":
     test_pdlist_hdd_synthetic()
     test_ldinfo_raid5()
     test_pdlist_mixed_hdd_tape()
+    test_pd_create_r0_action_gating()
     test_bbu_present()
     print("all parser tests OK")

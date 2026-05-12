@@ -822,7 +822,7 @@ class App:
             target_label = f"Adapter {self.state.selected_adapter}"
             target = self.state.selected_adapter
 
-        opts = A.actions_for(target_kind)
+        opts = A.applicable_actions(target_kind, target)
         action = action_picker(stdscr, f"Action — {target_label}", opts)
         if action is None:
             return
