@@ -22,6 +22,14 @@ from .runner import Runner
 TABS = ("Physical Drives", "Logical Drives", "Adapter+BBU", "Enclosures")
 
 
+def _numeric_key(s: str) -> tuple[int, int | str]:
+    """Sort key that orders numeric strings naturally with non-numerics last."""
+    try:
+        return (0, int(s))
+    except (TypeError, ValueError):
+        return (1, s or "")
+
+
 @dataclass
 class State:
     adapters: list[P.Adapter] = field(default_factory=list)
@@ -709,13 +717,19 @@ class App:
             self.state.adapters = P.parse_adp_all_info(r.stdout) if r.ok else []
 
             r = self.runner.pdlist()
-            self.state.pds = P.parse_pdlist(r.stdout) if r.ok else []
+            pds = P.parse_pdlist(r.stdout) if r.ok else []
+            pds.sort(key=lambda p: (p.adapter, _numeric_key(p.device_id)))
+            self.state.pds = pds
 
             r = self.runner.ldinfo()
-            self.state.lds = P.parse_ldinfo(r.stdout) if r.ok else []
+            lds = P.parse_ldinfo(r.stdout) if r.ok else []
+            lds.sort(key=lambda d: (d.adapter, _numeric_key(d.ld_index)))
+            self.state.lds = lds
 
             r = self.runner.enc_info()
-            self.state.encs = P.parse_encinfo(r.stdout) if r.ok else []
+            encs = P.parse_encinfo(r.stdout) if r.ok else []
+            encs.sort(key=lambda e: (e.adapter, _numeric_key(e.device_id)))
+            self.state.encs = encs
 
             r = self.runner.bbu_status()
             # BBU returns nonzero rc when absent — still parse the message.

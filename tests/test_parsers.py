@@ -86,6 +86,23 @@ def test_ldinfo_raid5() -> None:
     assert lds[1].state == "Degraded"
 
 
+def test_pdlist_mixed_hdd_tape() -> None:
+    """Regression: HDD record followed by tape entries must not swallow the tapes."""
+    pds = parsers.parse_pdlist(read("pdlist_mixed_hdd_tape.txt"))
+    assert len(pds) == 3, f"expected 3 PDs (1 HDD + 2 tapes), got {len(pds)}"
+    assert pds[0].enclosure == "252"
+    assert pds[0].slot == "2"
+    assert pds[0].device_id == "2"
+    assert "NETAPP" in pds[0].inquiry
+    assert pds[0].state.startswith("Unconfigured")
+    assert pds[1].enclosure == ""
+    assert pds[1].device_id == "0"
+    assert "Ultrium 4" in pds[1].inquiry
+    assert "Tape" in pds[1].pd_type
+    assert pds[2].device_id == "1"
+    assert "Ultrium 5" in pds[2].inquiry
+
+
 def test_bbu_present() -> None:
     statuses = parsers.parse_bbu(read("bbu_present.txt"))
     assert len(statuses) == 1
@@ -105,5 +122,6 @@ if __name__ == "__main__":
     test_bbu_absent()
     test_pdlist_hdd_synthetic()
     test_ldinfo_raid5()
+    test_pdlist_mixed_hdd_tape()
     test_bbu_present()
     print("all parser tests OK")

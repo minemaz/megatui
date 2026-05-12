@@ -131,20 +131,17 @@ def parse_pdlist(text: str) -> list[PhysicalDrive]:
         key, val = kv
         if key in _PD_BOUNDARY_KEYS:
             # "Enclosure Device ID" always starts a new HDD-style record.
-            # "Device Id" is a boundary only in tape-style records where the
-            # entry has no Enclosure Device ID at all — once we have an
-            # Enclosure header in the current record, "Device Id" is just
-            # another field inside it.
+            # A bare "Device Id" line starts a new record whenever the
+            # current record already has a Device Id — that signals we have
+            # left the previous PD (HDD or tape) and entered a sparse tape
+            # entry that lacks an Enclosure header. The HDD's own first
+            # Device Id line is still absorbed because Device Id is not yet
+            # present in current.raw at that point.
             start_new = False
             if key == "Enclosure Device ID":
                 start_new = True
             elif key == "Device Id":
-                if current is None or (
-                    "Enclosure Device ID" not in current.raw
-                    and "Device Id" in current.raw
-                ):
-                    start_new = True
-                elif current is None:
+                if current is None or "Device Id" in current.raw:
                     start_new = True
             if start_new:
                 if current is not None and current.raw:
