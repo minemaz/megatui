@@ -218,13 +218,14 @@ def actions_for(kind: TargetKind) -> list[Action]:
 
 def applicable_actions(kind: TargetKind, target: Any, backend: Any = None) -> list[Action]:
     """Return actions whose `applicable` predicate accepts target AND that the
-    backend (if given) can execute. Without a backend the result still
-    reflects state-based applicability, which is useful for tests."""
+    backend (if given) can execute on the given target. Backends use the
+    target to make per-controller capability decisions (e.g. storcli hides
+    RAID-only actions when the target's adapter is in IT-mode firmware)."""
     out: list[Action] = []
     for a in actions_for(kind):
         if a.applicable is not None and not a.applicable(target):
             continue
-        if backend is not None and not backend.supports(a.key):
+        if backend is not None and not backend.supports(a.key, target):
             continue
         out.append(a)
     return out

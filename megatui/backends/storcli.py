@@ -97,6 +97,20 @@ def _response_status(blob: str) -> tuple[str, str]:
     return cs.get("Status", ""), cs.get("Description", "")
 
 
+def _raid_capable(rd: dict) -> bool:
+    """Heuristic for 'does this controller actually do RAID volumes?'
+
+    SAS3008-class cards in IT-mode firmware respond to /c0 show all with
+    a Capabilities block that has no 'RAID Level Supported' key (and
+    Max Strip Size like '512Bytes' which is nonsensical for RAID). True
+    RAID controllers populate 'RAID Level Supported' with the supported
+    set like 'RAID0, RAID1, RAID5, ...'. Use that as the indicator.
+    """
+    caps = rd.get("Capabilities", {}) or {}
+    levels = caps.get("RAID Level Supported", "") or caps.get("RAID Level supported", "")
+    return bool(str(levels).strip())
+
+
 def parse_adp_all_info_json(blob: str, adapter_index: int = 0) -> list[Adapter]:
     rd = _response_data(blob)
     if not rd:
@@ -138,6 +152,7 @@ def parse_adp_all_info_json(blob: str, adapter_index: int = 0) -> list[Adapter]:
         "Backend Ports": str(hwcfg.get("Backend Port Count", "")).strip(),
     }
     a.flat = {k: v for k, v in flat.items() if v}
+    a.flat["RAID Capable"] = "Yes" if _raid_capable(rd) else "No"
     # Stash nested sections so the detail modal can show everything raw.
     for sec_name in ("Basics", "Version", "Status", "HwCfg", "Policies",
                      "Capabilities", "Supported Adapter Operations"):
@@ -389,12 +404,17 @@ def _adp_op(*verbs: str):
 
 
 def _build_storcli_create_r0(pd: PhysicalDrive) -> list[str]:
+    """`add vd` for a single drive. Help syntax is `drives=[e:]s` — the
+    enclosure prefix is optional, so for direct-attach drives we omit it
+    entirely. Sending `drives=:N` triggers storcli's parser to bail with
+    'unexpected TOKEN_COLON'."""
     enc = (pd.enclosure or "").strip()
     slot = pd.slot or pd.device_id or "0"
-    drives = f"{enc if enc and enc not in {'-', ''} else ''}:{slot}".lstrip(":")
-    if not drives.startswith(("e", ":")) and ":" not in drives:
-        drives = f":{drives}"  # storcli accepts ":N" for direct-attach
-    return [f"/c{pd.adapter}", "add", "vd", "type=raid0", f"drives={drives}"]
+    if enc and enc not in {"-", ""}:
+        drives_spec = f"{enc}:{slot}"
+    else:
+        drives_spec = slot
+    return [f"/c{pd.adapter}", "add", "vd", "r0", f"drives={drives_spec}"]
 
 
 def _build_storcli_bbu_learn(adapter: int) -> list[str]:
@@ -459,6 +479,22 @@ STORCLI_BUILDERS = {
 class StorcliBackend(Backend):
     name = "storcli"
 
+    # Actions that only work on RAID-capable controllers. supports() returns
+    # False for these when the target's adapter is in the non-RAID set.
+    _RAID_ONLY_ACTIONS = frozenset({
+        "pd_create_r0", "hsp_set", "hsp_remove",
+        "rebuild_start", "rebuild_stop", "rebuild_progress",
+        "pd_online", "pd_offline", "pd_mark_missing",
+        "pd_make_good", "pd_make_bad",
+        "pd_clear", "pd_clear_progress",
+        "ld_init_start", "ld_init_full", "ld_init_stop", "ld_init_progress",
+        "ld_cc_start", "ld_cc_stop", "ld_cc_progress",
+        "ld_set_wb", "ld_set_wt", "ld_set_ra", "ld_set_nora",
+        "ld_set_cached", "ld_set_direct", "ld_delete",
+        "pr_start", "pr_stop", "pr_suspend", "pr_resume", "pr_info",
+        "bbu_learn", "cfg_delete_all_lds", "cfg_clear",
+    })
+
     def __init__(
         self,
         *,
@@ -474,6 +510,8 @@ class StorcliBackend(Backend):
             fixture_lookup=_storcli_fixture,
             append_args=["J"],
         )
+        # Per-adapter RAID-capability cache; populated by adapters() / refresh.
+        self._raid_capable_adapters: set[int] = set()
 
     # -- read path ------------------------------------------------------ #
 
@@ -490,7 +528,13 @@ class StorcliBackend(Backend):
 
     def adapters(self) -> list[Adapter]:
         r = self.runner.run(["/c0", "show", "all"])
-        return parse_adp_all_info_json(r.stdout, adapter_index=0)
+        adps = parse_adp_all_info_json(r.stdout, adapter_index=0)
+        # Cache RAID capability per adapter so supports() can hide RAID-only
+        # actions on cards (e.g. SAS3008 IT-firmware) that would reject them.
+        self._raid_capable_adapters = {
+            a.index for a in adps if a.flat.get("RAID Capable") == "Yes"
+        }
+        return adps
 
     def physical_drives(self) -> list[PhysicalDrive]:
         r = self.runner.run(["/c0/sall", "show", "all"])
@@ -512,8 +556,22 @@ class StorcliBackend(Backend):
 
     # -- write path ----------------------------------------------------- #
 
-    def supports(self, action_key: str) -> bool:
-        return action_key in STORCLI_BUILDERS
+    def supports(self, action_key: str, target: Any = None) -> bool:
+        if action_key not in STORCLI_BUILDERS:
+            return False
+        if action_key in self._RAID_ONLY_ACTIONS:
+            adapter = self._target_adapter(target)
+            if adapter is not None and adapter not in self._raid_capable_adapters:
+                return False
+        return True
+
+    @staticmethod
+    def _target_adapter(target: Any) -> int | None:
+        if target is None:
+            return None
+        if isinstance(target, int):
+            return target
+        return getattr(target, "adapter", None)
 
     def build_argv(self, action_key: str, target: Any) -> list[str]:
         builder = STORCLI_BUILDERS.get(action_key)

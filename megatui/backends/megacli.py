@@ -158,7 +158,9 @@ class MegaCliBackend(Backend):
 
     # -- write path ----------------------------------------------------- #
 
-    def supports(self, action_key: str) -> bool:
+    def supports(self, action_key: str, target: Any = None) -> bool:
+        # MegaCli targets MegaRAID cards which always support RAID; no
+        # per-target capability check needed.
         return action_key in MEGACLI_BUILDERS
 
     def build_argv(self, action_key: str, target: Any) -> list[str]:

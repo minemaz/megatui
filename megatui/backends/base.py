@@ -58,8 +58,15 @@ class Backend(ABC):
     # ------------------------------------------------------------------ #
 
     @abstractmethod
-    def supports(self, action_key: str) -> bool:
-        """Whether this backend has an argv translation for action_key."""
+    def supports(self, action_key: str, target: Any = None) -> bool:
+        """Whether this backend has an argv translation for action_key.
+
+        `target` is optional and used by backends that need to check
+        per-controller capability (e.g. storcli on a SAS3008 IT-mode
+        card has `add vd` mapped, but the controller can't actually
+        execute it — so supports('pd_create_r0', pd) returns False
+        when pd.adapter is one of the non-RAID controllers).
+        """
 
     @abstractmethod
     def build_argv(self, action_key: str, target: Any) -> list[str]:

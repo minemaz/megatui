@@ -458,7 +458,7 @@ class IrcuBackend(Backend):
 
     # -- write path ----------------------------------------------------- #
 
-    def supports(self, action_key: str) -> bool:
+    def supports(self, action_key: str, target: Any = None) -> bool:
         return action_key in IRCU_BUILDERS
 
     def build_argv(self, action_key: str, target: Any) -> list[str]:

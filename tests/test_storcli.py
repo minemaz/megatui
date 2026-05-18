@@ -97,29 +97,76 @@ def test_storcli_path_construction_enclosure() -> None:
     pd.raw["Firmware state"] = "Online"
     assert STORCLI_BUILDERS["locate_on"](pd) == ["/c0/e252/s3", "start", "locate"]
     assert STORCLI_BUILDERS["pd_offline"](pd) == ["/c0/e252/s3", "set", "offline"]
+    # create_r0 also uses E:S form when enclosure present
+    pd.raw["Firmware state"] = "Unconfigured(good)"
+    assert STORCLI_BUILDERS["pd_create_r0"](pd) == [
+        "/c0", "add", "vd", "r0", "drives=252:3"
+    ]
 
 
-def test_storcli_action_visibility_for_netapp_drive() -> None:
-    """Through StorcliBackend.supports(), only actions storcli knows surface.
+def test_storcli_create_r0_direct_attach_syntax() -> None:
+    """Direct-attach drives (no enclosure) must emit `drives=N`, not `drives=:N`."""
+    pds = parse_pdlist_json(read("c0_sall_show_all.json"))
+    p = pds[0]
+    # Confirm fixture really has no enclosure (storcli's " :0" form)
+    assert p.enclosure == ""
+    argv = STORCLI_BUILDERS["pd_create_r0"](p)
+    assert argv == ["/c0", "add", "vd", "r0", "drives=0"], argv
+    # ensure we are NOT emitting the buggy `drives=:0` form anymore
+    assert "drives=:0" not in " ".join(argv)
 
-    Critically, the NETAPP HDD in Unconfigured(good) state should show
-    pd_make_bad / pd_clear / pd_create_r0 alongside locate.
-    """
+
+def test_storcli_action_visibility_it_mode_card() -> None:
+    """On a SAS3008 in IT-mode FW, RAID-only actions are hidden even when
+    the drive's state predicate would otherwise allow them. The 9300-8i
+    in this fixture has no 'RAID Level Supported' capability so all VD /
+    HSP / rebuild / init / patrol actions vanish from the menu — only
+    LED / progress queries (the truly capability-free actions) survive."""
     pds = parse_pdlist_json(read("c0_sall_show_all.json"))
     p = pds[0]
     backend = StorcliBackend(fixtures_dir=str(FIX.parent), use_sudo=False)
+    # populate RAID-capability cache via adapters() call (TUI does this on
+    # every refresh; the test mirrors that lifecycle)
+    backend.adapters()
     apps = actions.applicable_actions("pd", p, backend=backend)
     keys = {a.key for a in apps}
+    # Safe to always show — LED is controlled via SGPIO/SES on the expander
+    # and works regardless of firmware mode.
     assert "locate_on" in keys
     assert "locate_off" in keys
-    assert "hsp_set" in keys                       # Unconfigured(good) → ok
+    # Everything else is RAID-only and hidden because this controller has
+    # no RAID firmware. On IT-mode 9300 the user gets just two actions.
+    for k in ("hsp_set", "pd_create_r0", "pd_clear", "pd_clear_progress",
+              "pd_make_bad", "pd_make_good", "rebuild_progress"):
+        assert k not in keys, k
+
+
+def test_storcli_action_visibility_raid_card() -> None:
+    """Synthesize a RAID-capable adapter response and confirm the same
+    drive in Unconfigured(good) on it surfaces the RAID-only actions."""
+    import json as _json
+    rd = _json.load(open(FIX / "c0_show_all.json"))
+    rd["Controllers"][0]["Response Data"].setdefault("Capabilities", {})[
+        "RAID Level Supported"
+    ] = "RAID0, RAID1, RAID5, RAID6, RAID10, RAID50, RAID60"
+    raid_blob = _json.dumps(rd)
+    backend = StorcliBackend(fixtures_dir=str(FIX.parent), use_sudo=False)
+    # Manually feed the synthetic adapter blob through the parser to
+    # update the RAID-capability cache.
+    from megatui.backends.storcli import parse_adp_all_info_json
+    backend._raid_capable_adapters = {
+        a.index for a in parse_adp_all_info_json(raid_blob)
+        if a.flat.get("RAID Capable") == "Yes"
+    }
+    p = parse_pdlist_json(read("c0_sall_show_all.json"))[0]
+    keys = {a.key for a in actions.applicable_actions("pd", p, backend=backend)}
+    assert "hsp_set" in keys
     assert "pd_create_r0" in keys
     assert "pd_clear" in keys
     assert "pd_make_bad" in keys
-    # Should NOT show — wrong state
-    assert "rebuild_stop" not in keys
-    assert "pd_online" not in keys
-    assert "pd_make_good" not in keys              # already good
+    # Built argv for create_r0 now uses correct syntax: drives=N (no leading colon)
+    argv = backend.build_argv("pd_create_r0", p)
+    assert argv == ["/c0", "add", "vd", "r0", "drives=0"], argv
 
 
 def test_storcli_ld_argv_shape() -> None:
@@ -159,7 +206,9 @@ if __name__ == "__main__":
     test_parse_bbu_unsupported()
     test_storcli_path_construction_it_mode()
     test_storcli_path_construction_enclosure()
-    test_storcli_action_visibility_for_netapp_drive()
+    test_storcli_create_r0_direct_attach_syntax()
+    test_storcli_action_visibility_it_mode_card()
+    test_storcli_action_visibility_raid_card()
     test_storcli_ld_argv_shape()
     test_storcli_adapter_argv_shape()
     test_storcli_backend_fixture_replay()
