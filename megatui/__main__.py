@@ -14,9 +14,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument(
         "--backend",
-        choices=("auto", "megacli", "storcli"),
+        choices=("auto", "megacli", "storcli", "ircu"),
         default="auto",
-        help="Which CLI backend to drive. 'auto' prefers storcli when installed.",
+        help=(
+            "Which CLI backend to drive. 'auto' prefers storcli, then "
+            "MegaCli64, then sas*ircu."
+        ),
     )
     p.add_argument(
         "--no-sudo",

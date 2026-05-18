@@ -1,6 +1,6 @@
 # megatui
 
-LSI/Avago/Broadcom 系 SAS/MegaRAID コントローラに対する curses ベースの TUI フロントエンド。**MegaCli64** と **storcli64** の 2 バックエンドを切り替え可能で、9261/9266 などのレガシー MegaRAID から 9300-8i/9460/9560 など最近の HBA / RAID コントローラまで同じ UI で扱える。物理ドライブ・論理ドライブ・コントローラ・BBU・エンクロージャの状態を 4 タブで一覧でき、書き込み系操作 (ホットスペア指定、Locate LED、リビルド開始/中止、Patrol Read、構成削除など) も確認ダイアログ越しに発行できる。
+LSI/Avago/Broadcom 系 SAS/MegaRAID コントローラに対する curses ベースの TUI フロントエンド。**MegaCli64** / **storcli64** / **sas3ircu (sas2ircu)** の 3 バックエンドを切り替え可能で、9261/9266 などレガシー MegaRAID、9300-8i/9460/9560 など最近の RAID/HBA、そして 9211/9207 等の旧 IT/IR モード HBA まで同じ UI で扱える。物理ドライブ・論理ドライブ・コントローラ・BBU・エンクロージャの状態を 4 タブで一覧でき、書き込み系操作 (ホットスペア指定、Locate LED、リビルド開始/中止、Patrol Read、構成削除など) も確認ダイアログ越しに発行できる。
 
 ```
 ┌─ MegaTUI · adapter 0 ── F1 Physical Drives  F2 Logical Drives  F3 Adapter+BBU  F4 Enclosures ──┐
@@ -19,8 +19,8 @@ LSI/Avago/Broadcom 系 SAS/MegaRAID コントローラに対する curses ベー
 - **4 タブ** PD / LD / Adapter+BBU / Enclosure を `F1`〜`F4` で切替
 - **状態の色分け** Online=緑、Rebuild=黄、Failed=赤、Hotspare=シアン、温度しきい値で警告
 - **詳細モーダル** `Enter` でカーソル行の全フィールドをポップアップ表示
-- **2 バックエンド** MegaCli64 (テキスト出力) / storcli64 (JSON 出力) — 自動検出、`--backend` で明示指定可
-- **40 アクション** (PD 15 / LD 14 / Adapter 11) を 4 段階の危険度でラベリング、両バックエンドが同一の論理アクションを別 CLI 構文に翻訳
+- **3 バックエンド** MegaCli64 (テキスト) / storcli64 (JSON) / sas3ircu (sas2ircu) (テキスト) — 自動検出、`--backend` で明示指定可
+- **40 アクション** (PD 15 / LD 14 / Adapter 11) を 4 段階の危険度でラベリング、各バックエンドが同一の論理アクションを別 CLI 構文に翻訳。バックエンドが実装してない操作はメニューから自動で隠れる (ircu は LOCATE / HOTSPARE / CREATE / STATUS / DELETE のみ)
   - `safe` … 状態問い合わせ系
   - `write` … 設定変更 (キャッシュポリシー、ホットスペア指定、Patrol Read 起動 など)
   - `destructive` … リビルド中止、PD オフラインなど冗長性が落ちる操作
@@ -37,6 +37,7 @@ LSI/Avago/Broadcom 系 SAS/MegaRAID コントローラに対する curses ベー
 - 次のいずれかの CLI:
   - `/opt/MegaRAID/MegaCli/MegaCli64` (LSI 純正 MegaCli — レガシー MegaRAID 用)
   - `/opt/MegaRAID/storcli/storcli64` (Broadcom storcli — 9300 系以降の SAS HBA / 新しめの MegaRAID 用)
+  - `sas3ircu` または `sas2ircu` (IT/IR モード HBA — 9300/9305/9311 系 = sas3ircu、9201/9207/9211/9217 系 = sas2ircu。PATH 上または `/usr/sbin/`、`/opt/sas3ircu/` 等を自動検索)
 - `sudo -n` でバックエンドを呼べる権限 (パスワード無し)、または `--no-sudo` 指定可能な環境
 
 ## インストール / Install
@@ -63,6 +64,7 @@ sudo ln -s "$(pwd)/megatui.sh" /usr/local/bin/megatui
 # バックエンド明示指定
 ./megatui.sh --backend storcli
 ./megatui.sh --backend megacli
+./megatui.sh --backend ircu       # sas3ircu / sas2ircu
 
 # インストール確認
 ./megatui.sh --list-backends
@@ -73,6 +75,7 @@ sudo ln -s "$(pwd)/megatui.sh" /usr/local/bin/megatui
 # dry-run / オフライン検証 (実機なしでも UI を試せる、fixtures の中身を見て backend を選ぶ)
 ./megatui.sh --fixtures fixtures            # MegaCli テキスト fixtures
 ./megatui.sh --fixtures fixtures/storcli    # storcli JSON fixtures
+./megatui.sh --fixtures fixtures/ircu       # sas3ircu テキスト fixtures
 ```
 
 ## キーバインド / Keymap
@@ -135,13 +138,16 @@ megatui/
 │   └── backends/
 │       ├── base.py           # Backend ABC
 │       ├── megacli.py        # MegaCli64 backend (テキスト → dataclass)
-│       └── storcli.py        # storcli64 backend (JSON → dataclass + 引数翻訳)
+│       ├── storcli.py        # storcli64 backend (JSON → dataclass + 引数翻訳)
+│       └── ircu.py           # sas3ircu / sas2ircu backend (テキスト → dataclass)
 ├── fixtures/
 │   ├── *.txt                 # MegaCli64 サンプル
-│   └── storcli/*.json        # storcli64 サンプル
+│   ├── storcli/*.json        # storcli64 サンプル
+│   └── ircu/*.txt            # sas3ircu サンプル
 └── tests/
     ├── test_parsers.py       # MegaCli テキスト + state-based action gating
-    └── test_storcli.py       # storcli JSON + 引数翻訳 + fixture replay
+    ├── test_storcli.py       # storcli JSON + 引数翻訳 + fixture replay
+    └── test_ircu.py          # sas3ircu/2ircu テキスト + 引数翻訳 + fixture replay
 ```
 
 設計メモ:

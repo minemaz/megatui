@@ -1,0 +1,57 @@
+LSI Corporation SAS3 IR Configuration Utility.
+Version 16.00.12.00 (2017.07.05)
+Copyright (c) 2009-2017 Avago Technologies. All rights reserved.
+
+Read configuration has been initiated for controller 0
+------------------------------------------------------------------------
+Controller information
+------------------------------------------------------------------------
+  Controller type                         : SAS3008
+  BIOS version                            : 0.00.00.00
+  Firmware version                        : 15.00.00.00
+  Channel description                     : 1 Serial Attached SCSI
+  Initiator ID                            : 0
+  Maximum physical devices                : 1023
+  Concurrent commands supported           : 10240
+  Slot                                    : Unknown
+  Segment                                 : 0
+  Bus                                     : 161
+  Device                                  : 0
+  Function                                : 0
+  RAID Support                            : Yes
+------------------------------------------------------------------------
+IR Volume information
+------------------------------------------------------------------------
+No volumes to display.
+------------------------------------------------------------------------
+Physical device information
+------------------------------------------------------------------------
+Initiator at ID #0
+
+Device is a Hard disk
+  Enclosure #                             : 2
+  Slot #                                  : 0
+  SAS Address                             : 5000039-8-3838-7035
+  State                                   : Ready (RDY)
+  Size (in MB)/(in sectors)               : 3815448/7814037167
+  Manufacturer                            : NETAPP
+  Model Number                            : X477_TTCRE04TA07
+  Firmware Revision                       : NA01
+  Serial No                               : X7L0A1W4F9XC
+  GUID                                    : 500003983838705f
+  Protocol                                : SAS
+  Drive Type                              : SAS_HDD
+------------------------------------------------------------------------
+Enclosure information
+------------------------------------------------------------------------
+  Enclosure#                              : 1
+  Logical ID                              : 500605b0:0deb7cf0
+  Numslots                                : 8
+  StartSlot                               : 0
+  Enclosure#                              : 2
+  Logical ID                              : 50000398:38387037
+  Numslots                                : 8
+  StartSlot                               : 0
+------------------------------------------------------------------------
+SAS3IRCU: Command DISPLAY Completed Successfully.
+SAS3IRCU: Utility Completed Successfully.
