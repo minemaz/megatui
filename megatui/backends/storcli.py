@@ -557,13 +557,13 @@ class StorcliBackend(Backend):
     # -- write path ----------------------------------------------------- #
 
     def supports(self, action_key: str, target: Any = None) -> bool:
-        if action_key not in STORCLI_BUILDERS:
-            return False
-        if action_key in self._RAID_ONLY_ACTIONS:
-            adapter = self._target_adapter(target)
-            if adapter is not None and adapter not in self._raid_capable_adapters:
-                return False
-        return True
+        if action_key in STORCLI_BUILDERS:
+            if action_key in self._RAID_ONLY_ACTIONS:
+                adapter = self._target_adapter(target)
+                if adapter is not None and adapter not in self._raid_capable_adapters:
+                    return False
+            return True
+        return super().supports(action_key, target)
 
     @staticmethod
     def _target_adapter(target: Any) -> int | None:
@@ -574,7 +574,8 @@ class StorcliBackend(Backend):
         return getattr(target, "adapter", None)
 
     def build_argv(self, action_key: str, target: Any) -> list[str]:
-        builder = STORCLI_BUILDERS.get(action_key)
-        if builder is None:
-            raise NotImplementedError(f"storcli backend has no builder for {action_key}")
-        return builder(target)
+        if action_key in STORCLI_BUILDERS:
+            return STORCLI_BUILDERS[action_key](target)
+        if self.tool_for(action_key) is not None:
+            return self._tool_argv(action_key, target)
+        raise NotImplementedError(f"storcli backend has no builder for {action_key}")

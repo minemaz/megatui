@@ -459,10 +459,13 @@ class IrcuBackend(Backend):
     # -- write path ----------------------------------------------------- #
 
     def supports(self, action_key: str, target: Any = None) -> bool:
-        return action_key in IRCU_BUILDERS
+        if action_key in IRCU_BUILDERS:
+            return True
+        return super().supports(action_key, target)
 
     def build_argv(self, action_key: str, target: Any) -> list[str]:
-        builder = IRCU_BUILDERS.get(action_key)
-        if builder is None:
-            raise NotImplementedError(f"ircu backend has no builder for {action_key}")
-        return builder(target)
+        if action_key in IRCU_BUILDERS:
+            return IRCU_BUILDERS[action_key](target)
+        if self.tool_for(action_key) is not None:
+            return self._tool_argv(action_key, target)
+        raise NotImplementedError(f"ircu backend has no builder for {action_key}")

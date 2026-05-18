@@ -6,6 +6,18 @@ from typing import Any
 
 from ..parsers import Adapter, BBUStatus, Enclosure, LogicalDrive, PhysicalDrive
 from ..runner import Result, Runner
+from ..sg_util import (
+    SG_FORMAT_PATH,
+    SgPathNotFound,
+    find_sg_path,
+    sg_format_argv,
+    sg_format_installed,
+)
+
+
+# Action keys that are not vendor-CLI operations but tool invocations
+# (sg_format etc.). They have unified handling across all backends.
+_TOOL_ACTIONS = {"pd_reformat_512": SG_FORMAT_PATH}
 
 
 class BackendUnavailable(RuntimeError):
@@ -57,31 +69,64 @@ class Backend(ABC):
     # Write path
     # ------------------------------------------------------------------ #
 
-    @abstractmethod
     def supports(self, action_key: str, target: Any = None) -> bool:
-        """Whether this backend has an argv translation for action_key.
+        """Whether this backend can execute `action_key` on `target`.
 
-        `target` is optional and used by backends that need to check
-        per-controller capability (e.g. storcli on a SAS3008 IT-mode
-        card has `add vd` mapped, but the controller can't actually
-        execute it — so supports('pd_create_r0', pd) returns False
-        when pd.adapter is one of the non-RAID controllers).
+        Subclasses override to consult their own builder dict, but ALL
+        backends share tool-action support (e.g. `pd_reformat_512`
+        always uses sg_format regardless of vendor CLI). The default
+        impl handles tool actions; subclasses delegate to super() to
+        keep that behavior.
         """
+        if action_key in _TOOL_ACTIONS:
+            if not sg_format_installed():
+                return False
+            if target is None:
+                return True
+            # PD must have at least one identifier we can match in lsscsi.
+            return bool(getattr(target, "raw", {}).get("SAS Address(0)")
+                        or getattr(target, "raw", {}).get("WWN"))
+        return False
 
     @abstractmethod
     def build_argv(self, action_key: str, target: Any) -> list[str]:
         """Translate logical action_key + target into backend-specific argv.
 
         Raises NotImplementedError if `supports(action_key)` is False.
+        Subclasses delegate to `_tool_argv` for tool-action keys.
         """
 
-    def run(self, argv: list[str]) -> Result:
-        """Execute argv through this backend's Runner (subprocess / fixture)."""
+    def tool_for(self, action_key: str) -> str | None:
+        """Return the binary path for tool actions (sg_format etc.), else None."""
+        return _TOOL_ACTIONS.get(action_key)
+
+    def _tool_argv(self, action_key: str, target: Any) -> list[str]:
+        """Build args for a tool action. Raises SgPathNotFound if the PD
+        can't be resolved to /dev/sgN."""
+        if action_key == "pd_reformat_512":
+            sg = find_sg_path(target)
+            if sg is None:
+                raise SgPathNotFound(
+                    "Drive is not accessible via /dev/sg*. It's probably "
+                    "hidden behind a RAID controller without JBOD passthrough."
+                )
+            return sg_format_argv(sg, size=512, fmtpinfo=0,
+                                  early=True, quick=True)
+        raise NotImplementedError(f"unknown tool action: {action_key}")
+
+    def run(self, argv: list[str], tool: str | None = None) -> Result:
+        """Execute argv. If `tool` is given, runs that binary instead of
+        the backend's vendor CLI binary (and skips fixture replay /
+        backend append-args)."""
+        if tool is not None:
+            return self.runner.run_with(tool, argv)
         return self.runner.run(argv)
 
     def shell_repr(self, argv: tuple[str, ...]) -> str:
         return self.runner.shell_repr(argv)
 
-    def preview_argv(self, argv: list[str]) -> list[str]:
-        """Return the full argv (with sudo / binary prepended) that would run."""
+    def preview_argv(self, argv: list[str], tool: str | None = None) -> list[str]:
+        """Return the full argv (with sudo + binary prepended) that would run."""
+        if tool is not None:
+            return self.runner._build_argv_with(tool, argv)  # noqa: SLF001
         return self.runner._build_argv(argv)  # noqa: SLF001

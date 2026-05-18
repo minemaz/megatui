@@ -55,14 +55,26 @@ class Runner:
         self.append_args = list(append_args or [])
 
     def _build_argv(self, args: list[str]) -> list[str]:
+        return self._build_argv_with(self.binary, args, include_append_args=True)
+
+    def _build_argv_with(self, binary: str, args: list[str],
+                         *, include_append_args: bool = False) -> list[str]:
+        """Build a full argv but for a possibly-different binary.
+
+        Used by actions that bypass the backend's vendor CLI (sg_format
+        for sector reformat). `include_append_args` is False by default
+        so the backend's `-NoLog` / `J` suffix isn't accidentally
+        appended to a foreign tool.
+        """
         argv: list[str] = []
         if self.use_sudo:
             argv.extend(["sudo", "-n"])
-        argv.append(self.binary)
+        argv.append(binary)
         argv.extend(args)
-        for tail in self.append_args:
-            if tail not in args:
-                argv.append(tail)
+        if include_append_args:
+            for tail in self.append_args:
+                if tail not in args:
+                    argv.append(tail)
         return argv
 
     def _fixture_path(self, args: list[str]) -> str | None:
@@ -75,13 +87,26 @@ class Runner:
         return path if os.path.isfile(path) else None
 
     def run(self, args: list[str]) -> Result:
-        argv = self._build_argv(args)
+        return self._exec(self._build_argv(args), allow_fixture=True, fixture_args=args)
+
+    def run_with(self, binary: str, args: list[str]) -> Result:
+        """Run a different binary (e.g. sg_format) without fixture replay
+        or backend-binary append-args."""
+        return self._exec(
+            self._build_argv_with(binary, args),
+            allow_fixture=False,
+            fixture_args=args,
+        )
+
+    def _exec(self, argv: list[str], *, allow_fixture: bool,
+              fixture_args: list[str]) -> Result:
         argv_t = tuple(argv)
 
-        fixture = self._fixture_path(args)
-        if fixture is not None:
-            with open(fixture, "r", encoding="utf-8", errors="replace") as f:
-                return Result(rc=0, stdout=f.read(), stderr="", argv=argv_t)
+        if allow_fixture:
+            fixture = self._fixture_path(fixture_args)
+            if fixture is not None:
+                with open(fixture, "r", encoding="utf-8", errors="replace") as f:
+                    return Result(rc=0, stdout=f.read(), stderr="", argv=argv_t)
 
         try:
             proc = subprocess.run(

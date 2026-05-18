@@ -159,12 +159,14 @@ class MegaCliBackend(Backend):
     # -- write path ----------------------------------------------------- #
 
     def supports(self, action_key: str, target: Any = None) -> bool:
-        # MegaCli targets MegaRAID cards which always support RAID; no
-        # per-target capability check needed.
-        return action_key in MEGACLI_BUILDERS
+        if action_key in MEGACLI_BUILDERS:
+            return True
+        # Tool actions (sg_format) — delegate to base capability check.
+        return super().supports(action_key, target)
 
     def build_argv(self, action_key: str, target: Any) -> list[str]:
-        builder = MEGACLI_BUILDERS.get(action_key)
-        if builder is None:
-            raise NotImplementedError(f"megacli backend has no builder for {action_key}")
-        return builder(target)
+        if action_key in MEGACLI_BUILDERS:
+            return MEGACLI_BUILDERS[action_key](target)
+        if self.tool_for(action_key) is not None:
+            return self._tool_argv(action_key, target)
+        raise NotImplementedError(f"megacli backend has no builder for {action_key}")

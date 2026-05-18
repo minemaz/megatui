@@ -916,8 +916,24 @@ class App:
             return
 
         title_txt = action_title(action)
-        argv_args = self.backend.build_argv(action.key, target)
-        argv_preview = self.backend.preview_argv(list(argv_args))
+        tool = self.backend.tool_for(action.key)
+        try:
+            argv_args = self.backend.build_argv(action.key, target)
+        except Exception as exc:  # noqa: BLE001  (sg path resolution etc.)
+            self.state.status = t("ui.status.fail",
+                                  default="FAIL ({rc}): {title}",
+                                  rc="—", title=title_txt)
+            self.state.status_kind = "err"
+            message_modal(
+                stdscr,
+                t("ui.modal.fail_title",
+                  default="FAIL ({rc}) — {title}",
+                  rc="—", title=title_txt),
+                [str(exc)],
+                COLOR_ERR,
+            )
+            return
+        argv_preview = self.backend.preview_argv(list(argv_args), tool=tool)
         if not confirm_action(stdscr, action, argv_preview, target_label):
             self.state.status = t("ui.status.cancelled", default="Cancelled.")
             self.state.status_kind = "warn"
@@ -947,7 +963,7 @@ class App:
             )
             return
 
-        result = self.backend.run(list(argv_args))
+        result = self.backend.run(list(argv_args), tool=tool)
         audit.log(action.key, list(result.argv), result.rc,
                   f"target={target_label} | " + (result.stdout or result.stderr))
         no_output = t("ui.modal.no_output", default="(no output)")

@@ -97,6 +97,18 @@ def _pd_clearable(pd: PhysicalDrive) -> bool:
     return _pd_is_unconfigured_good(pd) or _pd_is_unconfigured_bad(pd)
 
 
+def _pd_has_sas_address(pd: PhysicalDrive) -> bool:
+    """Drive has a unique identifier we can match against lsscsi.
+
+    Required for tool actions (sg_format) that resolve the drive to its
+    /dev/sgN device path. backend.supports() does an additional check
+    that the actual /dev/sgN is reachable.
+    """
+    return bool(
+        pd.raw.get("SAS Address(0)") or pd.raw.get("SAS Address") or pd.raw.get("WWN")
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Action catalogues
 # --------------------------------------------------------------------------- #
@@ -144,6 +156,12 @@ PD_ACTIONS: list[Action] = [
     Action("pd_create_r0", "Create single-disk RAID0 VD", "destructive", "pd",
            "Wrap this drive in a new RAID0 logical drive (1 disk). Existing data is lost.",
            applicable=_pd_is_unconfigured_good),
+    Action("pd_reformat_512", "Reformat to 512-byte sectors", "catastrophic", "pd",
+           "SCSI FORMAT UNIT via sg_format. Re-formats from 520/528-byte "
+           "(NetApp/Sun/HP) to 512-byte logical sectors. Multi-hour, "
+           "irreversible, all data lost.",
+           confirm_phrase="REFORMAT-512",
+           applicable=_pd_has_sas_address),
 ]
 
 
