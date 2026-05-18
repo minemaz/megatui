@@ -1,44 +1,45 @@
-LSI Corporation SAS3 IR Configuration Utility.
-Version 16.00.12.00 (2017.07.05)
-Copyright (c) 2009-2017 Avago Technologies. All rights reserved.
+Avago Technologies SAS3 IR Configuration Utility.
+Version 17.00.00.00 (2018.04.02) 
+Copyright (c) 2009-2018 Avago Technologies. All rights reserved. 
 
 Read configuration has been initiated for controller 0
 ------------------------------------------------------------------------
 Controller information
 ------------------------------------------------------------------------
   Controller type                         : SAS3008
-  BIOS version                            : 0.00.00.00
+  BIOS version                            : 8.35.00.00
   Firmware version                        : 15.00.00.00
   Channel description                     : 1 Serial Attached SCSI
   Initiator ID                            : 0
   Maximum physical devices                : 1023
   Concurrent commands supported           : 10240
-  Slot                                    : Unknown
+  Slot                                    : 5
   Segment                                 : 0
   Bus                                     : 161
   Device                                  : 0
   Function                                : 0
-  RAID Support                            : Yes
+  RAID Support                            : No
 ------------------------------------------------------------------------
 IR Volume information
 ------------------------------------------------------------------------
-No volumes to display.
 ------------------------------------------------------------------------
 Physical device information
 ------------------------------------------------------------------------
 Initiator at ID #0
 
 Device is a Hard disk
-  Enclosure #                             : 2
+  Enclosure #                             : 1
   Slot #                                  : 0
-  SAS Address                             : 5000039-8-3838-7035
-  State                                   : Ready (RDY)
-  Size (in MB)/(in sectors)               : 3815448/7814037167
-  Manufacturer                            : NETAPP
+  SAS Address                             : 5000039-8-3838-705d
+  State                                   : Available (AVL)
+  Size (in MB)/(in sectors)               : ???/???
+Available (AVL)
+  Manufacturer                            : NETAPP  
   Model Number                            : X477_TTCRE04TA07
   Firmware Revision                       : NA01
-  Serial No                               : X7L0A1W4F9XC
-  GUID                                    : 500003983838705f
+  Serial No                               : A1W4F9XC
+  Unit Serial No(VPD)                     : X7L0A1W4F9XC
+  GUID                                    : 500003983838705c
   Protocol                                : SAS
   Drive Type                              : SAS_HDD
 ------------------------------------------------------------------------
@@ -46,10 +47,6 @@ Enclosure information
 ------------------------------------------------------------------------
   Enclosure#                              : 1
   Logical ID                              : 500605b0:0deb7cf0
-  Numslots                                : 8
-  StartSlot                               : 0
-  Enclosure#                              : 2
-  Logical ID                              : 50000398:38387037
   Numslots                                : 8
   StartSlot                               : 0
 ------------------------------------------------------------------------

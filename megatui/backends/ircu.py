@@ -86,23 +86,30 @@ _HEADER_LINES = {
 # e.g. "Ready (RDY)", "Online (ONL)", "Hot Spare (HSP)", "Failed (FLD)",
 # "Missing (MIS)", "Initializing (INIT)", "Optimal (OPT)", "Degraded (DGD)".
 _STATE_NORMALIZE = {
-    "RDY": "Unconfigured(good)",
-    "ONL": "Online",
-    "HSP": "Hotspare",
-    "FLD": "Failed",
-    "MIS": "Missing",
-    "OFL": "Offline",
-    "OUT": "Offline",
+    # Physical drive states.
+    "RDY":  "Unconfigured(good)",  # Hot-spare ready (IR-mode firmware)
+    "AVL":  "Available",            # Discoverable but unverified — IT-mode
+                                    # firmware leaves drives here. Kept as
+                                    # "Available" (NOT Unconfigured(good))
+                                    # so create-VD / HSP-add filter naturally
+                                    # hides them: the firmware can't honor
+                                    # them anyway.
+    "ONL":  "Online",
+    "HSP":  "Hotspare",
+    "FLD":  "Failed",
+    "MIS":  "Missing",
+    "OFL":  "Offline",
+    "OUT":  "Offline",
     "STBY": "Standby",
     "RBLD": "Rebuild",
-    "OPT": "Online",
-    "DGD": "Degraded",
+    "OPT":  "Online",
+    "DGD":  "Degraded",
     "FLD2": "Failed",
     # IR volume status codes
-    "OKY": "Optimal",
+    "OKY":  "Optimal",
     "INACT": "Inactive",
     "FAIL": "Failed",
-    "RT": "Rebuilding",
+    "RT":   "Rebuilding",
 }
 
 

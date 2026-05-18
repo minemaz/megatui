@@ -21,34 +21,37 @@ def read(name: str) -> str:
     return (FIX / name).read_text()
 
 
-def test_parse_display_9300_it_mode_one_drive() -> None:
+def test_parse_display_9300_real_it_mode() -> None:
+    """Real capture from epyc-7k62 (9300-8i + NETAPP X477 in IT-mode FW)."""
     adps, pds, lds, encs = parse_display(read("display.txt"))
     assert len(adps) == 1
     a = adps[0]
     assert a.product == "SAS3008"
     assert a.fw == "15.00.00.00"
     assert a.bbu_present is False                  # ircu HBAs have no BBU
-    assert a.physical_devices == "1"               # one HDD attached
+    assert a.physical_devices == "1"
+    # IT-mode firmware reports RAID Support: No.
+    assert a.get("RAID Support") == "No"
 
     assert len(pds) == 1
     p = pds[0]
-    assert p.enclosure == "2"
+    assert p.enclosure == "1"
     assert p.slot == "0"
-    # State (RDY) must normalize to MegaCli-style for shared predicates.
-    assert "Unconfigured(good)" in p.state
+    # AVL → "Available" (NOT Unconfigured(good)) so create/HSP actions are
+    # hidden naturally on IT-mode firmware that can't honor them.
+    assert "Available" in p.state
+    assert "Unconfigured(good)" not in p.state
     assert "NETAPP" in p.inquiry
     assert "X477" in p.inquiry
-    assert "SAS" in p.pd_type
-    assert p.media_type == "Hard Disk Device"
-    # Size translation: 3815448 MB → 3.638 TB
-    assert "TB" in p.size
+    # NETAPP X477 in its 520-byte sector format reports unknown size.
+    assert "???" in p.size
 
-    # No IR volumes in this fixture.
+    # No IR volumes — the controller can't host them in IT mode.
     assert lds == []
 
-    # Two enclosures: controller's own + external.
-    assert len(encs) == 2
-    assert {e.index for e in encs} == {"1", "2"}
+    # Just one enclosure (the controller's own SES) on this direct-attach setup.
+    assert len(encs) == 1
+    assert encs[0].index == "1"
 
 
 def test_parse_display_with_ir_volume_raid1() -> None:
@@ -112,24 +115,36 @@ def test_ircu_supports_only_subset() -> None:
         assert not b.supports(key), key
 
 
-def test_ircu_action_visibility_on_ugood_pd() -> None:
-    """Filtering applies both state predicates AND backend.supports."""
-    adps, pds, _, _ = parse_display(read("display.txt"))
+def test_ircu_action_visibility_it_mode() -> None:
+    """On IT-mode FW, only locate/status surface — RAID-managing actions hidden."""
+    _, pds, _, _ = parse_display(read("display.txt"))
     p = pds[0]
     backend = IrcuBackend(fixtures_dir=str(FIX), use_sudo=False, binary="/bin/true")
-    apps = actions.applicable_actions("pd", p, backend=backend)
-    keys = {a.key for a in apps}
-    # Should appear
+    keys = {a.key for a in actions.applicable_actions("pd", p, backend=backend)}
+    # Should appear (state-agnostic)
     assert "locate_on" in keys
     assert "locate_off" in keys
-    assert "hsp_set" in keys                     # Unconfigured(good) → ok
-    assert "pd_create_r0" in keys                # Unconfigured(good) → ok
     assert "rebuild_progress" in keys
-    # Should NOT appear — either wrong state OR not supported by ircu
-    assert "pd_make_bad" not in keys             # not in IRCU_BUILDERS
+    # Should NOT appear: drive is "Available", not Unconfigured(good)
+    assert "hsp_set" not in keys
+    assert "pd_create_r0" not in keys
+    # Should NOT appear: ircu lacks these operations entirely
+    assert "pd_make_bad" not in keys
     assert "pd_make_good" not in keys
     assert "pd_clear" not in keys
     assert "pd_offline" not in keys
+
+
+def test_ircu_action_visibility_ir_mode() -> None:
+    """On IR-mode FW with healthy drives in RDY, create-VD / HSP-add surface."""
+    _, pds, _, _ = parse_display(read("display_with_ir_volume.txt"))
+    # The NETAPP HDD in this synthetic fixture is in Hotspare state.
+    hsp = next(p for p in pds if "NETAPP" in p.inquiry)
+    backend = IrcuBackend(fixtures_dir=str(FIX), use_sudo=False, binary="/bin/true")
+    keys = {a.key for a in actions.applicable_actions("pd", hsp, backend=backend)}
+    assert "hsp_remove" in keys                  # currently a hot spare
+    assert "hsp_set" not in keys                 # already one
+    assert "pd_create_r0" not in keys            # already in use
 
 
 def test_ircu_backend_fixture_replay() -> None:
@@ -141,16 +156,17 @@ def test_ircu_backend_fixture_replay() -> None:
     lds = backend.logical_drives()
     assert lds == []
     encs = backend.enclosures()
-    assert {e.index for e in encs} == {"1", "2"}
+    assert len(encs) == 1                          # real capture has one
     bbu = backend.bbu_statuses()
     assert bbu and bbu[0].present is False
 
 
 if __name__ == "__main__":
-    test_parse_display_9300_it_mode_one_drive()
+    test_parse_display_9300_real_it_mode()
     test_parse_display_with_ir_volume_raid1()
     test_ircu_argv_shape()
     test_ircu_supports_only_subset()
-    test_ircu_action_visibility_on_ugood_pd()
+    test_ircu_action_visibility_it_mode()
+    test_ircu_action_visibility_ir_mode()
     test_ircu_backend_fixture_replay()
     print("all ircu tests OK")
