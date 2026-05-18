@@ -21,6 +21,7 @@ LSI/Avago/Broadcom 系 SAS/MegaRAID コントローラに対する curses ベー
 - **詳細モーダル** `Enter` でカーソル行の全フィールドをポップアップ表示
 - **3 バックエンド** MegaCli64 (テキスト) / storcli64 (JSON) / sas3ircu (sas2ircu) (テキスト) — 自動検出、`--backend` で明示指定可
 - **40 アクション** (PD 15 / LD 14 / Adapter 11) を 4 段階の危険度でラベリング、各バックエンドが同一の論理アクションを別 CLI 構文に翻訳。バックエンドが実装してない操作はメニューから自動で隠れる (ircu は LOCATE / HOTSPARE / CREATE / STATUS / DELETE のみ)
+- **i18n** 英語 (default) と日本語に対応。`--lang en|ja` または `LANG`/`LC_MESSAGES` 環境変数で切替
   - `safe` … 状態問い合わせ系
   - `write` … 設定変更 (キャッシュポリシー、ホットスペア指定、Patrol Read 起動 など)
   - `destructive` … リビルド中止、PD オフラインなど冗長性が落ちる操作
@@ -76,6 +77,10 @@ sudo ln -s "$(pwd)/megatui.sh" /usr/local/bin/megatui
 ./megatui.sh --fixtures fixtures            # MegaCli テキスト fixtures
 ./megatui.sh --fixtures fixtures/storcli    # storcli JSON fixtures
 ./megatui.sh --fixtures fixtures/ircu       # sas3ircu テキスト fixtures
+
+# 言語切替 (env LANG=ja_JP.UTF-8 でも自動)
+./megatui.sh --lang ja
+./megatui.sh --lang en
 ```
 
 ## キーバインド / Keymap
@@ -134,6 +139,7 @@ megatui/
 │   ├── parsers.py            # MegaCli テキスト出力パーサ
 │   ├── actions.py            # アクションメタデータ + 適用条件 (state predicates)
 │   ├── audit.py              # 監査ログ追記
+│   ├── i18n.py               # 言語ロケール対応 (en / ja, --lang フラグ + env 自動判定)
 │   ├── tui.py                # curses メインアプリ (App / 描画 / モーダル)
 │   └── backends/
 │       ├── base.py           # Backend ABC
@@ -147,7 +153,8 @@ megatui/
 └── tests/
     ├── test_parsers.py       # MegaCli テキスト + state-based action gating
     ├── test_storcli.py       # storcli JSON + 引数翻訳 + fixture replay
-    └── test_ircu.py          # sas3ircu/2ircu テキスト + 引数翻訳 + fixture replay
+    ├── test_ircu.py          # sas3ircu/2ircu テキスト + 引数翻訳 + fixture replay
+    └── test_i18n.py          # 翻訳テーブル + 環境変数自動判定
 ```
 
 設計メモ:

@@ -17,9 +17,39 @@ from . import actions as A
 from . import audit
 from . import parsers as P
 from .backends import Backend, MegaCliBackend, detect
+from .i18n import t
 
 
-TABS = ("Physical Drives", "Logical Drives", "Adapter+BBU", "Enclosures")
+TAB_KEYS = (
+    "ui.tab.physical_drives",
+    "ui.tab.logical_drives",
+    "ui.tab.adapter_bbu",
+    "ui.tab.enclosures",
+)
+TAB_DEFAULTS = ("Physical Drives", "Logical Drives", "Adapter+BBU", "Enclosures")
+
+
+def tabs() -> tuple[str, ...]:
+    """Localized tab labels."""
+    return tuple(t(k, default=d) for k, d in zip(TAB_KEYS, TAB_DEFAULTS))
+
+
+def action_title(a: A.Action) -> str:
+    return t(f"action.{a.key}.title", default=a.title)
+
+
+def action_summary(a: A.Action) -> str:
+    return t(f"action.{a.key}.summary", default=a.summary)
+
+
+def danger_tag(danger: str) -> str:
+    defaults = {
+        "safe":         " safe ",
+        "write":        " write",
+        "destructive":  "DANGER",
+        "catastrophic": "DESTROY",
+    }
+    return t(f"ui.danger.{danger}", default=defaults.get(danger, "??"))
 
 
 def _numeric_key(s: str) -> tuple[int, int | str]:
@@ -146,7 +176,7 @@ def draw_tabs(win: Any, state: State, width: int) -> None:
     label = f" MegaTUI · adapter {state.selected_adapter} "
     safe_addnstr(win, 0, 0, label, width, curses.color_pair(COLOR_HEADER) | curses.A_BOLD)
     x = len(label) + 2
-    for idx, name in enumerate(TABS):
+    for idx, name in enumerate(tabs()):
         is_active = idx == state.tab
         text = f" F{idx+1} {name} "
         attr = curses.color_pair(COLOR_TAB_ACTIVE) | curses.A_BOLD if is_active else curses.color_pair(COLOR_TAB_INACTIVE)
@@ -169,9 +199,10 @@ def draw_status(win: Any, state: State, height: int, width: int) -> None:
     else:
         attr = curses.color_pair(COLOR_INFO)
     safe_addnstr(win, bar_y, 1, msg[:width - 2], width - 2, attr)
-    helpline = (
-        " ↑↓ select   Tab/Shift-Tab tab   F1-F4 jump   Enter detail   "
-        "a action   r refresh   q quit "
+    helpline = t(
+        "ui.footer.full",
+        default=" ↑↓ select   Tab/Shift-Tab tab   F1-F4 jump   Enter detail   "
+                "a action   r refresh   q quit",
     )
     safe_addnstr(win, height - 1, 0, helpline.ljust(width)[:width], width,
                  curses.color_pair(COLOR_DIM) | curses.A_REVERSE)
@@ -192,16 +223,17 @@ def _trunc(s: str, n: int) -> str:
 
 def render_pd_table(win: Any, state: State, top: int, height: int, width: int) -> None:
     cols = (
-        ("Slot", 5),
-        ("Enc", 5),
-        ("DevId", 6),
-        ("Size", 11),
-        ("State", 24),
-        ("MediaErr", 9),
-        ("OtherErr", 9),
-        ("Temp", 6),
-        ("Type", 8),
-        ("Inquiry", max(8, width - (5 + 5 + 6 + 11 + 24 + 9 + 9 + 6 + 8 + 10))),
+        (t("ui.col.slot",       default="Slot"),     5),
+        (t("ui.col.enc",        default="Enc"),      5),
+        (t("ui.col.devid",      default="DevId"),    6),
+        (t("ui.col.size",       default="Size"),     11),
+        (t("ui.col.state",      default="State"),    24),
+        (t("ui.col.media_err",  default="MediaErr"), 9),
+        (t("ui.col.other_err",  default="OtherErr"), 9),
+        (t("ui.col.temp",       default="Temp"),     6),
+        (t("ui.col.type",       default="Type"),     8),
+        (t("ui.col.inquiry",    default="Inquiry"),
+         max(8, width - (5 + 5 + 6 + 11 + 24 + 9 + 9 + 6 + 8 + 10))),
     )
     header_y = top
     x = 1
@@ -216,7 +248,8 @@ def render_pd_table(win: Any, state: State, top: int, height: int, width: int) -
     if not pds:
         safe_addnstr(
             win, top + 2, 2,
-            "No physical drives reported on this adapter.",
+            t("ui.empty.pds",
+              default="No physical drives reported on this adapter."),
             width - 4, curses.color_pair(COLOR_DIM),
         )
         return
@@ -269,10 +302,10 @@ def render_pd_table(win: Any, state: State, top: int, height: int, width: int) -
             elif ci == 7 and pd.temperature:
                 temp_val = "".join(ch for ch in pd.temperature if ch.isdigit())
                 if temp_val:
-                    t = int(temp_val[:2]) if len(temp_val) >= 2 else 0
-                    if t >= 60:
+                    temp_c = int(temp_val[:2]) if len(temp_val) >= 2 else 0
+                    if temp_c >= 60:
                         attr = curses.color_pair(COLOR_ERR) | curses.A_BOLD | (curses.A_REVERSE if is_sel else 0)
-                    elif t >= 50:
+                    elif temp_c >= 50:
                         attr = curses.color_pair(COLOR_WARN) | (curses.A_REVERSE if is_sel else 0)
             safe_addnstr(win, y, x, value.ljust(w), w, attr or base)
             x += w + 1
@@ -280,14 +313,15 @@ def render_pd_table(win: Any, state: State, top: int, height: int, width: int) -
 
 def render_ld_table(win: Any, state: State, top: int, height: int, width: int) -> None:
     cols = (
-        ("LD", 4),
-        ("Name", 14),
-        ("RAID", 26),
-        ("Size", 12),
-        ("Drives", 7),
-        ("State", 12),
-        ("Strip", 8),
-        ("Cache", max(8, width - (4 + 14 + 26 + 12 + 7 + 12 + 8 + 8))),
+        (t("ui.col.ld",     default="LD"),     4),
+        (t("ui.col.name",   default="Name"),   14),
+        (t("ui.col.raid",   default="RAID"),   26),
+        (t("ui.col.size",   default="Size"),   12),
+        (t("ui.col.drives", default="Drives"), 7),
+        (t("ui.col.state",  default="State"),  12),
+        (t("ui.col.strip",  default="Strip"),  8),
+        (t("ui.col.cache",  default="Cache"),
+         max(8, width - (4 + 14 + 26 + 12 + 7 + 12 + 8 + 8))),
     )
     header_y = top
     x = 1
@@ -302,7 +336,8 @@ def render_ld_table(win: Any, state: State, top: int, height: int, width: int) -
     if not lds:
         safe_addnstr(
             win, top + 2, 2,
-            "No virtual drives configured. Use external tools to create RAID volumes.",
+            t("ui.empty.lds",
+              default="No virtual drives configured. Use external tools to create RAID volumes."),
             width - 4, curses.color_pair(COLOR_DIM),
         )
         return
@@ -354,7 +389,9 @@ def _two_col_lines(pairs: list[tuple[str, str]], col_width: int) -> list[tuple[s
 def render_adapter_bbu(win: Any, state: State, top: int, height: int, width: int) -> None:
     adps = [a for a in state.adapters if a.index == state.selected_adapter]
     if not adps:
-        safe_addnstr(win, top + 1, 2, "No adapter info loaded. Press [r] to refresh.",
+        safe_addnstr(win, top + 1, 2,
+                     t("ui.empty.adp",
+                       default="No adapter info loaded. Press [r] to refresh."),
                      width - 4, curses.color_pair(COLOR_DIM))
         return
     a = adps[0]
@@ -362,27 +399,28 @@ def render_adapter_bbu(win: Any, state: State, top: int, height: int, width: int
     bbu = bbu_list[0] if bbu_list else None
 
     pairs_left: list[tuple[str, str, int]] = [
-        ("Product", a.product, COLOR_INFO),
-        ("Serial", a.serial, 0),
-        ("FW Version", a.get("FW Version") or a.fw, 0),
-        ("FW Package", a.get("FW Package Build"), 0),
-        ("BIOS", a.get("BIOS Version"), 0),
-        ("Memory", a.memory, 0),
-        ("SAS Address", a.get("SAS Address"), 0),
-        ("Host Interface", a.get("Host Interface"), 0),
-        ("Backend Ports", a.get("Number of Backend Port"), 0),
-        ("Virtual Drives", a.virtual_drives, 0),
-        ("Physical Devices", a.physical_devices, 0),
-        ("Disks (Failed)", f"{a.get('Disks')} ({a.get('Failed Disks')} failed)", 0),
-        ("Rebuild Rate", a.get("Rebuild Rate"), 0),
-        ("Patrol Read Rate", a.get("PR Rate"), 0),
-        ("BGI Rate", a.get("BGI Rate"), 0),
-        ("CC Rate", a.get("Check Consistency Rate"), 0),
-        ("Auto Rebuild", a.get("Auto Rebuild"), 0),
-        ("Alarm", a.get("Alarm"), 0),
+        (t("ui.adp.product",          default="Product"),          a.product, COLOR_INFO),
+        (t("ui.adp.serial",           default="Serial"),           a.serial, 0),
+        (t("ui.adp.fw_version",       default="FW Version"),       a.get("FW Version") or a.fw, 0),
+        (t("ui.adp.fw_package",       default="FW Package"),       a.get("FW Package Build"), 0),
+        (t("ui.adp.bios",             default="BIOS"),             a.get("BIOS Version"), 0),
+        (t("ui.adp.memory",           default="Memory"),           a.memory, 0),
+        (t("ui.adp.sas_address",      default="SAS Address"),      a.get("SAS Address"), 0),
+        (t("ui.adp.host_interface",   default="Host Interface"),   a.get("Host Interface"), 0),
+        (t("ui.adp.backend_ports",    default="Backend Ports"),    a.get("Number of Backend Port"), 0),
+        (t("ui.adp.virtual_drives",   default="Virtual Drives"),   a.virtual_drives, 0),
+        (t("ui.adp.physical_devices", default="Physical Devices"), a.physical_devices, 0),
+        (t("ui.adp.disks_failed",     default="Disks (Failed)"),
+         f"{a.get('Disks')} ({a.get('Failed Disks')} failed)", 0),
+        (t("ui.adp.rebuild_rate",     default="Rebuild Rate"),     a.get("Rebuild Rate"), 0),
+        (t("ui.adp.pr_rate",          default="Patrol Read Rate"), a.get("PR Rate"), 0),
+        (t("ui.adp.bgi_rate",         default="BGI Rate"),         a.get("BGI Rate"), 0),
+        (t("ui.adp.cc_rate",          default="CC Rate"),          a.get("Check Consistency Rate"), 0),
+        (t("ui.adp.auto_rebuild",     default="Auto Rebuild"),     a.get("Auto Rebuild"), 0),
+        (t("ui.adp.alarm",            default="Alarm"),            a.get("Alarm"), 0),
     ]
 
-    safe_addnstr(win, top, 2, "Adapter", width - 4,
+    safe_addnstr(win, top, 2, t("ui.section.adapter", default="Adapter"), width - 4,
                  curses.color_pair(COLOR_TAB_ACTIVE) | curses.A_BOLD)
 
     col_w = max(20, width // 2 - 2)
@@ -397,16 +435,19 @@ def render_adapter_bbu(win: Any, state: State, top: int, height: int, width: int
 
     # BBU panel on the right half
     rx = col_w + 2
-    safe_addnstr(win, top, rx, "BBU", width - rx - 1,
+    safe_addnstr(win, top, rx, t("ui.section.bbu", default="BBU"), width - rx - 1,
                  curses.color_pair(COLOR_TAB_ACTIVE) | curses.A_BOLD)
     y = top + 2
     if bbu is None:
-        safe_addnstr(win, y, rx, "Not queried yet — press [r] to refresh.",
+        safe_addnstr(win, y, rx,
+                     t("ui.empty.bbu_unloaded",
+                       default="Not queried yet — press [r] to refresh."),
                      width - rx - 1, curses.color_pair(COLOR_DIM))
         return
     if not bbu.present:
-        safe_addnstr(win, y, rx, "Status:", 8, curses.A_BOLD)
-        safe_addnstr(win, y, rx + 10, "Absent / Unsupported",
+        safe_addnstr(win, y, rx, t("ui.bbu.status", default="Status:"), 8, curses.A_BOLD)
+        safe_addnstr(win, y, rx + 10,
+                     t("ui.empty.bbu_absent", default="Absent / Unsupported"),
                      width - rx - 11, curses.color_pair(COLOR_ERR) | curses.A_BOLD)
         y += 1
         if bbu.error:
@@ -414,30 +455,33 @@ def render_adapter_bbu(win: Any, state: State, top: int, height: int, width: int
                          width - rx - 1, curses.color_pair(COLOR_DIM))
         return
 
+    # (key, default_label, value) — key is used for type-specific coloring so
+    # comparisons stay stable across languages.
     bbu_pairs = [
-        ("State", bbu.state),
-        ("Battery Type", bbu.battery_type),
-        ("Charge", bbu.charge),
-        ("Voltage", bbu.voltage),
-        ("Current", bbu.current),
-        ("Temperature", bbu.temperature),
-        ("Charger Status", bbu.raw.get("Charger Status", "")),
-        ("Remaining", bbu.raw.get("Remaining Capacity", "")),
-        ("Full Capacity", bbu.raw.get("Full Charge Capacity", "")),
-        ("Replacement", bbu.raw.get("Battery Replacement required", "")),
-        ("Learn Active", bbu.raw.get("Learn Cycle Active", "")),
-        ("Learn Status", bbu.raw.get("Learn Cycle Status", "")),
+        ("state",          "State",          bbu.state),
+        ("battery_type",   "Battery Type",   bbu.battery_type),
+        ("charge",         "Charge",         bbu.charge),
+        ("voltage",        "Voltage",        bbu.voltage),
+        ("current",        "Current",        bbu.current),
+        ("temperature",    "Temperature",    bbu.temperature),
+        ("charger_status", "Charger Status", bbu.raw.get("Charger Status", "")),
+        ("remaining",      "Remaining",      bbu.raw.get("Remaining Capacity", "")),
+        ("full_capacity",  "Full Capacity",  bbu.raw.get("Full Charge Capacity", "")),
+        ("replacement",    "Replacement",    bbu.raw.get("Battery Replacement required", "")),
+        ("learn_active",   "Learn Active",   bbu.raw.get("Learn Cycle Active", "")),
+        ("learn_status",   "Learn Status",   bbu.raw.get("Learn Cycle Status", "")),
     ]
-    for label, value in bbu_pairs:
+    for key, default_label, value in bbu_pairs:
         if y >= height - 3:
             break
+        label = t(f"ui.bbu.{key}", default=default_label)
         attr = curses.A_BOLD
         safe_addnstr(win, y, rx, f"{label:<16}", 16, attr)
         v = value or "—"
         v_attr = 0
-        if label == "State" and value:
+        if key == "state" and value:
             v_attr = state_color(value)
-        if label == "Replacement" and value and value.lower() not in ("no", "false"):
+        if key == "replacement" and value and value.lower() not in ("no", "false"):
             v_attr = curses.color_pair(COLOR_ERR) | curses.A_BOLD
         safe_addnstr(win, y, rx + 18, _trunc(v, width - rx - 19),
                      width - rx - 19, v_attr)
@@ -446,17 +490,18 @@ def render_adapter_bbu(win: Any, state: State, top: int, height: int, width: int
 
 def render_enclosures(win: Any, state: State, top: int, height: int, width: int) -> None:
     cols = (
-        ("Adp", 4),
-        ("Enc#", 5),
-        ("DevID", 6),
-        ("Slots", 6),
-        ("PDs", 4),
-        ("PSU", 4),
-        ("Fan", 4),
-        ("TempSensors", 12),
-        ("Status", 14),
-        ("Type", 10),
-        ("Vendor/Product", max(8, width - (4 + 5 + 6 + 6 + 4 + 4 + 4 + 12 + 14 + 10 + 11))),
+        (t("ui.col.adp",            default="Adp"),            4),
+        (t("ui.col.enc_hash",       default="Enc#"),           5),
+        (t("ui.col.devid_full",     default="DevID"),          6),
+        (t("ui.col.slots",          default="Slots"),          6),
+        (t("ui.col.pds",            default="PDs"),            4),
+        (t("ui.col.psu",            default="PSU"),            4),
+        (t("ui.col.fan",            default="Fan"),            4),
+        (t("ui.col.tempsensors",    default="TempSensors"),    12),
+        (t("ui.col.status",         default="Status"),         14),
+        (t("ui.col.type",           default="Type"),           10),
+        (t("ui.col.vendor_product", default="Vendor/Product"),
+         max(8, width - (4 + 5 + 6 + 6 + 4 + 4 + 4 + 12 + 14 + 10 + 11))),
     )
     header_y = top
     x = 1
@@ -469,7 +514,8 @@ def render_enclosures(win: Any, state: State, top: int, height: int, width: int)
 
     encs = [e for e in state.encs if e.adapter == state.selected_adapter]
     if not encs:
-        safe_addnstr(win, top + 2, 2, "No enclosures reported.",
+        safe_addnstr(win, top + 2, 2,
+                     t("ui.empty.encs", default="No enclosures reported."),
                      width - 4, curses.color_pair(COLOR_DIM))
         return
     cursor = state.cursor[3] % max(1, len(encs))
@@ -557,8 +603,9 @@ def detail_modal(stdscr: Any, title: str, kv: list[tuple[str, str]]) -> None:
     for i, (k, v) in enumerate(kv[: height - 4]):
         safe_addnstr(win, 2 + i, 2, k, key_col_w, curses.A_BOLD)
         safe_addnstr(win, 2 + i, val_col_x, str(v), val_col_w)
-    safe_addnstr(win, height - 2, 2, "[Esc/q] close", width - 4,
-                 curses.color_pair(COLOR_DIM))
+    safe_addnstr(win, height - 2, 2,
+                 t("ui.modal.close_hint", default="[Esc/q] close"),
+                 width - 4, curses.color_pair(COLOR_DIM))
     win.refresh()
     while True:
         ch = win.getch()
@@ -577,7 +624,9 @@ def message_modal(stdscr: Any, title: str, lines: list[str], color: int = COLOR_
             win.addnstr(2 + i, 2, line, width - 4)
         except curses.error:
             pass
-    win.addstr(height - 2, 2, "[Enter/Esc] close", curses.color_pair(COLOR_DIM))
+    win.addstr(height - 2, 2,
+               t("ui.modal.enter_close_hint", default="[Enter/Esc] close"),
+               curses.color_pair(COLOR_DIM))
     win.refresh()
     while True:
         ch = win.getch()
@@ -596,29 +645,37 @@ def _danger_color(d: str) -> int:
 
 def action_picker(stdscr: Any, title: str, opts: list[A.Action]) -> A.Action | None:
     if not opts:
-        message_modal(stdscr, "No actions", ["No actions available for this target."], COLOR_DIM)
+        message_modal(
+            stdscr,
+            t("ui.picker.no_actions_title", default="No actions"),
+            [t("ui.picker.no_actions_body",
+               default="No actions available for this target.")],
+            COLOR_DIM,
+        )
         return None
+    titles = [action_title(o) for o in opts]
+    summaries = [action_summary(o) for o in opts]
     height = min(len(opts) + 5, stdscr.getmaxyx()[0] - 2)
-    width = min(max(60, max(len(o.title) + len(o.summary) + 8 for o in opts)),
+    width = min(max(60, max(len(tt) + len(ss) + 8 for tt, ss in zip(titles, summaries))),
                 stdscr.getmaxyx()[1] - 2)
     win = _centered_panel(stdscr, height, width)
     cur = 0
     while True:
         _draw_box(win, title)
         for i, opt in enumerate(opts[: height - 5]):
-            tag = {"safe": " safe ", "write": " write", "destructive": "DANGER",
-                   "catastrophic": "DESTROY"}[opt.danger]
+            tag = danger_tag(opt.danger)
             tag_attr = curses.color_pair(_danger_color(opt.danger)) | curses.A_BOLD
             line_attr = curses.A_REVERSE if i == cur else 0
             try:
                 win.addnstr(2 + i, 2, " " * (width - 4), width - 4, line_attr)
                 win.addstr(2 + i, 2, f" [{tag}] ", tag_attr | line_attr)
-                win.addnstr(2 + i, 12, opt.title.ljust(28), 28, line_attr | curses.A_BOLD)
-                win.addnstr(2 + i, 42, opt.summary, max(0, width - 44), line_attr)
+                win.addnstr(2 + i, 12, titles[i].ljust(28), 28, line_attr | curses.A_BOLD)
+                win.addnstr(2 + i, 42, summaries[i], max(0, width - 44), line_attr)
             except curses.error:
                 pass
         win.addstr(height - 2, 2,
-                   "[↑↓] move  [Enter] select  [Esc] cancel",
+                   t("ui.picker.hint",
+                     default="[↑↓] move  [Enter] select  [Esc] cancel"),
                    curses.color_pair(COLOR_DIM))
         win.refresh()
         ch = win.getch()
@@ -636,34 +693,48 @@ def confirm_action(stdscr: Any, action: A.Action, argv_preview: list[str],
                    target_label: str) -> bool:
     """Confirmation dialog. Catastrophic actions require typed phrase."""
     cmd_str = " ".join(argv_preview)
-    lines = [
-        f"Action: {action.title}",
-        f"Target: {target_label}",
-        f"Danger: {action.danger.upper()}",
-        "",
-        f"{action.summary}",
-        "",
-        "Command:",
-        f"  {cmd_str}",
-        "",
+    title_txt = action_title(action)
+    summary_txt = action_summary(action)
+    danger_label = t(f"ui.danger.{action.danger}_full",
+                     default=action.danger.upper())
+    # Per-line tags so layout/coloring stays language-independent.
+    lines: list[tuple[str, str]] = [
+        ("action", f"{t('ui.confirm.action', default='Action:')} {title_txt}"),
+        ("target", f"{t('ui.confirm.target', default='Target:')} {target_label}"),
+        ("danger", f"{t('ui.confirm.danger', default='Danger:')} {danger_label}"),
+        ("blank",  ""),
+        ("summary", summary_txt),
+        ("blank",  ""),
+        ("cmd_h",  t("ui.confirm.command", default="Command:")),
+        ("cmd",    f"  {cmd_str}"),
+        ("blank",  ""),
     ]
     if action.danger == "catastrophic":
-        lines.append(f"Type exactly: {action.confirm_phrase!r} to confirm")
+        lines.append((
+            "typed",
+            t("ui.confirm.typed_phrase",
+              default=f"Type exactly: {action.confirm_phrase!r} to confirm",
+              phrase=action.confirm_phrase),
+        ))
     else:
-        lines.append("[y/Enter] confirm   [n/Esc] cancel")
+        lines.append((
+            "yn",
+            t("ui.confirm.yes_no_hint",
+              default="[y/Enter] confirm   [n/Esc] cancel"),
+        ))
 
     height = min(len(lines) + 5, stdscr.getmaxyx()[0] - 2)
-    width = min(max(70, max(len(s) for s in lines) + 6), stdscr.getmaxyx()[1] - 2)
+    width = min(max(70, max(len(line) for _, line in lines) + 6), stdscr.getmaxyx()[1] - 2)
     win = _centered_panel(stdscr, height, width)
     color = _danger_color(action.danger)
-    _draw_box(win, f"Confirm: {action.title}", color)
-    for i, line in enumerate(lines[: height - 5]):
+    _draw_box(win, t("ui.confirm.title", default="Confirm: {title}", title=title_txt), color)
+    for i, (tag, line) in enumerate(lines[: height - 5]):
         attr = 0
-        if line.startswith("Danger:"):
+        if tag == "danger":
             attr = curses.color_pair(color) | curses.A_BOLD
-        if line.startswith("  ") and "/opt/MegaRAID" in line:
+        elif tag == "cmd":
             attr = curses.color_pair(COLOR_INFO)
-        if line.startswith("Type exactly"):
+        elif tag == "typed":
             attr = curses.color_pair(COLOR_DANGER) | curses.A_BOLD
         try:
             win.addnstr(2 + i, 2, line, width - 4, attr)
@@ -681,7 +752,8 @@ def confirm_action(stdscr: Any, action: A.Action, argv_preview: list[str],
 
     # typed-phrase confirmation
     prompt_y = height - 3
-    win.addstr(prompt_y, 2, "Confirm > ", curses.color_pair(COLOR_DANGER) | curses.A_BOLD)
+    win.addstr(prompt_y, 2, t("ui.confirm.prompt", default="Confirm > "),
+               curses.color_pair(COLOR_DANGER) | curses.A_BOLD)
     curses.echo()
     curses.curs_set(1)
     try:
@@ -710,7 +782,7 @@ class App:
     # -- data -----------------------------------------------------------------
 
     def refresh(self) -> None:
-        self.state.status = "Refreshing…"
+        self.state.status = t("ui.status.refreshing", default="Refreshing…")
         self.state.status_kind = "info"
         try:
             self.state.adapters = self.backend.adapters()
@@ -730,15 +802,24 @@ class App:
             self.state.bbu = self.backend.bbu_statuses()
 
             self.state.last_refresh = time.time()
-            self.state.status = (
-                f"[{self.backend.name}] Refreshed {time.strftime('%H:%M:%S')}  "
-                f"adapters={len(self.state.adapters)} "
-                f"PDs={len(self.state.pds)} LDs={len(self.state.lds)} "
-                f"Encs={len(self.state.encs)}"
+            self.state.status = t(
+                "ui.status.refreshed",
+                default="[{backend}] Refreshed {time}  adapters={adapters} "
+                        "PDs={pds} LDs={lds} Encs={encs}",
+                backend=self.backend.name,
+                time=time.strftime("%H:%M:%S"),
+                adapters=len(self.state.adapters),
+                pds=len(self.state.pds),
+                lds=len(self.state.lds),
+                encs=len(self.state.encs),
             )
             self.state.status_kind = "ok"
         except Exception as exc:  # noqa: BLE001
-            self.state.status = f"Refresh failed: {exc}"
+            self.state.status = t(
+                "ui.status.refresh_failed",
+                default="Refresh failed: {exc}",
+                exc=exc,
+            )
             self.state.status_kind = "err"
 
     # -- selection -----------------------------------------------------------
@@ -770,26 +851,35 @@ class App:
             if pd is None:
                 return
             kv = list(pd.raw.items())
-            title = f"PD slot={pd.slot} dev={pd.device_id}"
-            detail_modal(stdscr, title, kv)
+            detail_modal(stdscr,
+                         t("ui.modal.pd_title", default="PD slot={slot} dev={dev}",
+                           slot=pd.slot, dev=pd.device_id),
+                         kv)
         elif tab == 1:
             ld = self._current_ld()
             if ld is None:
                 return
             kv = list(ld.raw.items())
-            detail_modal(stdscr, f"LD {ld.ld_index} ({ld.name})", kv)
+            detail_modal(stdscr,
+                         t("ui.modal.ld_title", default="LD {idx} ({name})",
+                           idx=ld.ld_index, name=ld.name),
+                         kv)
         elif tab == 2:
             adps = [a for a in self.state.adapters if a.index == self.state.selected_adapter]
             if not adps:
                 return
             a = adps[0]
             kv = list(a.flat.items())
-            detail_modal(stdscr, f"Adapter {a.index}", kv)
+            detail_modal(stdscr,
+                         t("ui.modal.adp_title", default="Adapter {idx}", idx=a.index),
+                         kv)
         else:
             e = self._current_enc()
             if e is None:
                 return
-            detail_modal(stdscr, f"Enclosure {e.index}", list(e.raw.items()))
+            detail_modal(stdscr,
+                         t("ui.modal.enc_title", default="Enclosure {idx}", idx=e.index),
+                         list(e.raw.items()))
 
     def run_action(self, stdscr: Any) -> None:
         tab = self.state.tab
@@ -817,46 +907,65 @@ class App:
             target = self.state.selected_adapter
 
         opts = A.applicable_actions(target_kind, target, backend=self.backend)
-        action = action_picker(stdscr, f"Action — {target_label}", opts)
+        action = action_picker(
+            stdscr,
+            t("ui.picker.title", default="Action — {target}", target=target_label),
+            opts,
+        )
         if action is None:
             return
 
+        title_txt = action_title(action)
         argv_args = self.backend.build_argv(action.key, target)
         argv_preview = self.backend.preview_argv(list(argv_args))
         if not confirm_action(stdscr, action, argv_preview, target_label):
-            self.state.status = "Cancelled."
+            self.state.status = t("ui.status.cancelled", default="Cancelled.")
             self.state.status_kind = "warn"
             return
 
         if self.fixture_mode:
             audit.log(f"DRYRUN:{action.key}", argv_preview, 0,
                       f"target={target_label}")
-            self.state.status = (
-                f"[fixture mode] would run: {self.backend.shell_repr(tuple(argv_preview))}"
+            self.state.status = t(
+                "ui.status.fixture_dry_run",
+                default="[fixture mode] would run: {cmd}",
+                cmd=self.backend.shell_repr(tuple(argv_preview)),
             )
             self.state.status_kind = "warn"
-            message_modal(stdscr, "Fixture mode (dry run)",
-                          ["No command was executed.",
-                           "Unset MEGATUI_FIXTURES to run for real.",
-                           "",
-                           f"  {self.backend.shell_repr(tuple(argv_preview))}"],
-                          COLOR_INFO)
+            message_modal(
+                stdscr,
+                t("ui.modal.fixture_title", default="Fixture mode (dry run)"),
+                [
+                    t("ui.modal.fixture_line1",
+                      default="No command was executed."),
+                    t("ui.modal.fixture_line2",
+                      default="Unset MEGATUI_FIXTURES to run for real."),
+                    "",
+                    f"  {self.backend.shell_repr(tuple(argv_preview))}",
+                ],
+                COLOR_INFO,
+            )
             return
 
         result = self.backend.run(list(argv_args))
         audit.log(action.key, list(result.argv), result.rc,
                   f"target={target_label} | " + (result.stdout or result.stderr))
-        out_lines = (result.stdout or result.stderr or "(no output)").splitlines()
+        no_output = t("ui.modal.no_output", default="(no output)")
+        out_lines = (result.stdout or result.stderr or no_output).splitlines()
         if result.ok:
-            self.state.status = f"OK: {action.title}"
+            self.state.status = t("ui.status.ok", default="OK: {title}", title=title_txt)
             self.state.status_kind = "ok"
-            message_modal(stdscr, f"OK — {action.title}",
-                          out_lines[:30] or ["(no output)"], COLOR_OK)
+            message_modal(stdscr,
+                          t("ui.modal.ok_title", default="OK — {title}", title=title_txt),
+                          out_lines[:30] or [no_output], COLOR_OK)
         else:
-            self.state.status = f"FAIL ({result.rc}): {action.title}"
+            self.state.status = t("ui.status.fail", default="FAIL ({rc}): {title}",
+                                  rc=result.rc, title=title_txt)
             self.state.status_kind = "err"
-            message_modal(stdscr, f"FAIL ({result.rc}) — {action.title}",
-                          out_lines[:30] or ["(no output)"], COLOR_ERR)
+            message_modal(stdscr,
+                          t("ui.modal.fail_title", default="FAIL ({rc}) — {title}",
+                            rc=result.rc, title=title_txt),
+                          out_lines[:30] or [no_output], COLOR_ERR)
         # Refresh for visible side effects.
         self.refresh()
 
@@ -876,7 +985,9 @@ class App:
                 H, W = stdscr.getmaxyx()
                 if H < 12 or W < 80:
                     safe_addnstr(stdscr, 0, 0,
-                                 f"Terminal too small ({W}x{H}) — needs 80x12 minimum.",
+                                 t("ui.footer.term_small",
+                                   default="Terminal too small ({w}x{h}) — needs 80x12 minimum.",
+                                   w=W, h=H),
                                  W, curses.A_BOLD)
                     stdscr.refresh()
                     if stdscr.getch() in (ord("q"), 27):
@@ -910,9 +1021,9 @@ class App:
             elif ch == curses.KEY_F4 or ch == ord("4"):
                 self.state.tab = 3
             elif ch == 9:  # Tab
-                self.state.tab = (self.state.tab + 1) % len(TABS)
+                self.state.tab = (self.state.tab + 1) % len(TAB_KEYS)
             elif ch == 353:  # Shift-Tab on most terms
-                self.state.tab = (self.state.tab - 1) % len(TABS)
+                self.state.tab = (self.state.tab - 1) % len(TAB_KEYS)
             elif ch in (curses.KEY_UP, ord("k")):
                 self.state.cursor[self.state.tab] = max(0, self.state.cursor[self.state.tab] - 1)
             elif ch in (curses.KEY_DOWN, ord("j")):
