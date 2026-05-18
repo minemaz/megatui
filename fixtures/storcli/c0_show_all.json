@@ -1,0 +1,286 @@
+{
+"Controllers":[
+{
+	"Command Status" : {
+		"CLI Version" : "007.2002.0000.0000 Oct 11, 2021",
+		"Operating system" : "Linux 6.17.0-29-generic",
+		"Controller" : 0,
+		"Status" : "Success",
+		"Description" : "None"
+	},
+	"Response Data" : {
+		"Basics" : {
+			"Controller" : 0,
+			"Adapter Type" : " SAS3008(C0)",
+			"Model" : "SAS9300-8i",
+			"Serial Number" : "500605b00deb7cf0",
+			"Current System Date/time" : "05/18/2026 14:16:26",
+			"Concurrent commands supported" : 10240,
+			"SAS Address" : " 500605b00deb7cf0",
+			"PCI Address" : "00:a1:00:00"
+		},
+		"Version" : {
+			"Firmware Package Build" : "00.00.00.00",
+			"Firmware Version" : "15.00.00.00",
+			"Bios Version" : "08.35.00.00",
+			"NVDATA Version" : "14.00.00.07",
+			"Driver Name" : "mpt3sas",
+			"Driver Version" : "52.100.00.00"
+		},
+		"PCI Version" : {
+			"Vendor Id" : 4096,
+			"Device Id" : 151,
+			"SubVendor Id" : 4096,
+			"SubDevice Id" : 12512,
+			"Host Interface" : "PCIE",
+			"Device Interface" : "SAS-12G",
+			"Bus Number" : 161,
+			"Device Number" : 0,
+			"Function Number" : 0,
+			"Domain ID" : 0
+		},
+		"Pending Images in Flash" : {
+			"Image name" : "No pending images"
+		},
+		"Status" : {
+			"Controller Status" : "OK",
+			"Memory Correctable Errors" : 0,
+			"Memory Uncorrectable Errors" : 0,
+			"Bios was not detected during boot" : "No",
+			"Controller has booted into safe mode" : "No",
+			"Controller has booted into certificate provision mode" : "No"
+		},
+		"Supported Adapter Operations" : {
+			"Alarm Control" : "No",
+			"Cluster Support" : "No",
+			"Self Diagnostic" : "No",
+			"Deny SCSI Passthrough" : "No",
+			"Deny SMP Passthrough" : "No",
+			"Deny STP Passthrough" : "No",
+			"Support more than 8 Phys" : "No",
+			"FW and Event Time in GMT" : "No",
+			"Support Enclosure Enumeration" : "Yes",
+			"Support Allowed Operations" : "Yes",
+			"Support Multipath" : "Yes",
+			"Support Security" : "No",
+			"Support Config Page Model" : "No",
+			"Support the OCE without adding drives" : "No",
+			"support EKM" : "No",
+			"Snapshot Enabled" : "No",
+			"Support PFK" : "No",
+			"Support PI" : "No",
+			"Support Shield State" : "No",
+			"Support Set Link Speed" : "No",
+			"Support JBOD" : "No",
+			"Disable Online PFK Change" : "No",
+			"Real Time Scheduler" : "No",
+			"Support Reset Now" : "No",
+			"Support Emulated Drives" : "No",
+			"Support Secure Boot" : "No",
+			"Support Platform Security" : "No",
+			"Support Package Stamp Mismatch Reporting" : "No"
+		},
+		"HwCfg" : {
+			"ChipRevision" : " C0",
+			"BatteryFRU" : "N/A",
+			"Front End Port Count" : 1,
+			"Backend Port Count" : 8,
+			"Serial Debugger" : "Absent",
+			"NVRAM Size" : "0KB",
+			"Flash Size" : "8MB",
+			"On Board Memory Size" : "0MB",
+			"On Board Expander" : "Absent",
+			"Temperature Sensor for ROC" : "Present",
+			"Temperature Sensor for Controller" : "Absent",
+			"Current Size of CacheCade (GB)" : 0,
+			"Current Size of FW Cache (MB)" : 0,
+			"ROC temperature(Degree Celsius)" : 116
+		},
+		"Policies" : {
+			"Policies Table" : [
+				{
+					"Policy" : "Predictive Fail Poll Interval",
+					"Current" : "0 sec",
+					"Default" : ""
+				},
+				{
+					"Policy" : "Interrupt Throttle Active Count",
+					"Current" : "0",
+					"Default" : ""
+				},
+				{
+					"Policy" : "Interrupt Throttle Completion",
+					"Current" : "0 us",
+					"Default" : ""
+				},
+				{
+					"Policy" : "Rebuild Rate",
+					"Current" : "0 %",
+					"Default" : "30%"
+				},
+				{
+					"Policy" : "PR Rate",
+					"Current" : "0 %",
+					"Default" : "30%"
+				},
+				{
+					"Policy" : "BGI Rate",
+					"Current" : "0 %",
+					"Default" : "30%"
+				},
+				{
+					"Policy" : "Check Consistency Rate",
+					"Current" : "0 %",
+					"Default" : "30%"
+				},
+				{
+					"Policy" : "Reconstruction Rate",
+					"Current" : "0 %",
+					"Default" : "30%"
+				},
+				{
+					"Policy" : "Cache Flush Interval",
+					"Current" : "0s",
+					"Default" : ""
+				}
+			],
+			"Flush Time(Default)" : "4s",
+			"Drive Coercion Mode" : "none",
+			"Auto Rebuild" : "Off",
+			"Battery Warning" : "Off",
+			"ECC Bucket Size" : 0,
+			"ECC Bucket Leak Rate (hrs)" : 0,
+			"Restore HotSpare on Insertion" : "Off",
+			"Expose Enclosure Devices" : "Off",
+			"Maintain PD Fail History" : "Off",
+			"Reorder Host Requests" : "On",
+			"Auto detect BackPlane" : "SGPIO/i2c SEP",
+			"Load Balance Mode" : "None",
+			"Security Key Assigned" : "Off",
+			"Disable Online Controller Reset" : "Off",
+			"Use drive activity for locate" : "Off"
+		},
+		"Boot" : {
+			"Max Drives to Spinup at One Time" : 0,
+			"Maximum number of direct attached drives to spin up in 1 min" : 0,
+			"Delay Among Spinup Groups (sec)" : 0,
+			"Allow Boot with Preserved Cache" : "On"
+		},
+		"Defaults" : {
+			"Phy Polarity" : 0,
+			"Phy PolaritySplit" : 0,
+			"Cached IO" : "Off",
+			"Default spin down time (mins)" : 0,
+			"Coercion Mode" : "None",
+			"ZCR Config" : "Unknown",
+			"Max Chained Enclosures" : 0,
+			"Direct PD Mapping" : "No",
+			"Restore Hot Spare on Insertion" : "No",
+			"Expose Enclosure Devices" : "No",
+			"Maintain PD Fail History" : "No",
+			"Zero Based Enclosure Enumeration" : "No",
+			"Disable Puncturing" : "No",
+			"Un-Certified Hard Disk Drives" : "Block",
+			"SMART Mode" : "Mode 6",
+			"Enable LED Header" : "No",
+			"LED Show Drive Activity" : "No",
+			"Dirty LED Shows Drive Activity" : "No",
+			"EnableCrashDump" : "No",
+			"Disable Online Controller Reset" : "No",
+			"Treat Single span R1E as R10" : "No",
+			"Power Saving option" : "Enable",
+			"TTY Log In Flash" : "No",
+			"Auto Enhanced Import" : "No",
+			"Enable Shield State" : "No",
+			"Time taken to detect CME" : "60 sec"
+		},
+		"Capabilities" : {
+			"Supported Drives" : "SAS, SATA",
+			"Enable JBOD" : "Not Allowed",
+			"Max Parallel Commands" : 10240,
+			"Max SGE Count" : 128,
+			"Max Data Transfer Size" : "32 sectors",
+			"Max Strips PerIO" : 0,
+			"Max Configurable CacheCade Size" : 0,
+			"Min Strip Size" : "512Bytes",
+			"Max Strip Size" : "512Bytes"
+		},
+		"Scheduled Tasks" : "NA",
+		"Security Protocol properties" : {
+			"Security Protocol" : "None"
+		},
+		"Physical Device Information" : {
+			"Drive /c0/s0" : [
+				{
+					"EID:Slt" : " :0",
+					"DID" : 0,
+					"State" : "UGood",
+					"DG" : "-",
+					"Size" : "0 KB",
+					"Intf" : "SAS",
+					"Med" : "HDD",
+					"SED" : "-",
+					"PI" : "-",
+					"SeSz" : "0 KB",
+					"Model" : "X477_TTCRE04TA07",
+					"Sp" : "-"
+				}
+			],
+			"Drive /c0/s0 - Detailed Information" : {
+				"Drive /c0/s0 State" : {
+					"Shield Counter" : "N/A",
+					"Media Error Count" : "N/A",
+					"Other Error Count" : "N/A",
+					"Predictive Failure Count" : "N/A",
+					"S.M.A.R.T alert flagged by drive" : "N/A"
+				},
+				"Drive /c0/s0 Device attributes" : {
+					"Manufacturer Id" : "NETAPP  ",
+					"Model Number" : "X477_TTCRE04TA07",
+					"NAND Vendor" : "NA",
+					"SN" : "X7L0A1W4F9XC    ",
+					"WWN" : "500003983838705F",
+					"Firmware Revision" : "NA01",
+					"Raw size" : "0 KB [0x1d1c0beaf Sectors]",
+					"Coerced size" : "0 KB [0x1d1c0beaf Sectors]",
+					"Non Coerced size" : "0 KB [0x1d1c0beaf Sectors]",
+					"Device Speed" : "Unknown",
+					"Link Speed" : "12.0Gb/s",
+					"Sector Size" : "0 KB",
+					"Config ID" : "NA",
+					"Number of Blocks" : 7814037167,
+					"Connector Name" : "N/A"
+				},
+				"Drive /c0/s0 Policies/Settings" : {
+					"Enclosure position" : "-",
+					"Connected Port Number" : "2 ",
+					"Sequence Number" : 0,
+					"Commissioned Spare" : "No",
+					"Emergency Spare" : "No",
+					"Last Predictive Failure Event Sequence Number" : "N/A",
+					"Successful diagnostics completion on" : "N/A",
+					"SED Capable" : "N/A",
+					"SED Enabled" : "N/A",
+					"Secured" : "N/A",
+					"Needs EKM Attention" : "N/A",
+					"PI Eligible" : "N/A",
+					"Certified" : "N/A",
+					"Wide Port Capable" : "N/A",
+					"Multipath" : "No",
+					"Port Information" : [
+						{
+							"Port" : 0,
+							"Status" : "Active",
+							"Linkspeed" : "12.0Gb/s",
+							"SAS address" : "0x500003983838705d"
+						}
+					]
+				},
+				"Inquiry Data" : "00 00 06 12 5b 00 10 02 4e 45 54 41 50 50 20 20 58 34 37 37 5f 54 54 43 52 45 30 34 54 41 30 37 4e 41 30 31 41 31 57 34 46 39 58 43 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+			}
+		}
+	}
+}
+]
+}
+

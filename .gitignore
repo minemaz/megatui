@@ -18,6 +18,8 @@ venv/
 
 # Runtime artifacts
 audit.log
+storcli.log              # storcli64 leaves a log in CWD; cannot be suppressed
+MegaSAS.log              # MegaCli leaves this when -NoLog isn't passed
 *.tmp
 .coverage
 htmlcov/

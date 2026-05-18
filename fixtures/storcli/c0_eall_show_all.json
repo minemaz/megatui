@@ -1,0 +1,23 @@
+{
+"Controllers":[
+{
+	"Command Status" : {
+		"CLI Version" : "007.2002.0000.0000 Oct 11, 2021",
+		"Operating system" : "Linux 6.17.0-29-generic",
+		"Controller" : 0,
+		"Status" : "Failure",
+		"Description" : "None",
+		"Detailed Status" : [
+			{
+				"Ctrl" : 0,
+				"EID" : 0,
+				"Status" : "Failed",
+				"ErrCd" : 255,
+				"ErrMsg" : "Enclosure not found"
+			}
+		]
+	}
+}
+]
+}
+

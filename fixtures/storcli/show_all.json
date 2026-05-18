@@ -1,0 +1,33 @@
+{
+"Controllers":[
+{
+	"Command Status" : {
+		"CLI Version" : "007.2002.0000.0000 Oct 11, 2021",
+		"Operating system" : "Linux 6.17.0-29-generic",
+		"Status Code" : 0,
+		"Status" : "Success",
+		"Description" : "None"
+	},
+	"Response Data" : {
+		"Number of Controllers" : 1,
+		"Host Name" : "epyc-7k62",
+		"Operating System " : "Linux 6.17.0-29-generic",
+		"StoreLib IT Version" : "07.2100.0200.0000",
+		"StoreLib IR3 Version" : "16.14-0",
+		"IT System Overview" : [
+			{
+				"Ctl" : 0,
+				"Model" : "SAS9300-8i",
+				"AdapterType" : "  SAS3008(C0)",
+				"VendId" : 4096,
+				"DevId" : 151,
+				"SubVendId" : 4096,
+				"SubDevId" : 12512,
+				"PCI Address" : "00:a1:00:00"
+			}
+		]
+	}
+}
+]
+}
+

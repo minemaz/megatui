@@ -16,7 +16,7 @@ from typing import Any
 from . import actions as A
 from . import audit
 from . import parsers as P
-from .runner import Runner
+from .backends import Backend, MegaCliBackend, detect
 
 
 TABS = ("Physical Drives", "Logical Drives", "Adapter+BBU", "Enclosures")
@@ -702,8 +702,8 @@ def confirm_action(stdscr: Any, action: A.Action, argv_preview: list[str],
 
 
 class App:
-    def __init__(self, runner: Runner, fixture_mode: bool = False) -> None:
-        self.runner = runner
+    def __init__(self, backend: Backend, fixture_mode: bool = False) -> None:
+        self.backend = backend
         self.state = State()
         self.fixture_mode = fixture_mode
 
@@ -713,31 +713,25 @@ class App:
         self.state.status = "Refreshing…"
         self.state.status_kind = "info"
         try:
-            r = self.runner.adp_all_info()
-            self.state.adapters = P.parse_adp_all_info(r.stdout) if r.ok else []
+            self.state.adapters = self.backend.adapters()
 
-            r = self.runner.pdlist()
-            pds = P.parse_pdlist(r.stdout) if r.ok else []
+            pds = self.backend.physical_drives()
             pds.sort(key=lambda p: (p.adapter, _numeric_key(p.device_id)))
             self.state.pds = pds
 
-            r = self.runner.ldinfo()
-            lds = P.parse_ldinfo(r.stdout) if r.ok else []
+            lds = self.backend.logical_drives()
             lds.sort(key=lambda d: (d.adapter, _numeric_key(d.ld_index)))
             self.state.lds = lds
 
-            r = self.runner.enc_info()
-            encs = P.parse_encinfo(r.stdout) if r.ok else []
+            encs = self.backend.enclosures()
             encs.sort(key=lambda e: (e.adapter, _numeric_key(e.device_id)))
             self.state.encs = encs
 
-            r = self.runner.bbu_status()
-            # BBU returns nonzero rc when absent — still parse the message.
-            self.state.bbu = P.parse_bbu(r.stdout or r.stderr)
+            self.state.bbu = self.backend.bbu_statuses()
 
             self.state.last_refresh = time.time()
             self.state.status = (
-                f"Refreshed {time.strftime('%H:%M:%S')}  "
+                f"[{self.backend.name}] Refreshed {time.strftime('%H:%M:%S')}  "
                 f"adapters={len(self.state.adapters)} "
                 f"PDs={len(self.state.pds)} LDs={len(self.state.lds)} "
                 f"Encs={len(self.state.encs)}"
@@ -822,13 +816,13 @@ class App:
             target_label = f"Adapter {self.state.selected_adapter}"
             target = self.state.selected_adapter
 
-        opts = A.applicable_actions(target_kind, target)
+        opts = A.applicable_actions(target_kind, target, backend=self.backend)
         action = action_picker(stdscr, f"Action — {target_label}", opts)
         if action is None:
             return
 
-        argv_args = action.build(target)
-        argv_preview = self.runner._build_argv(list(argv_args))  # noqa: SLF001
+        argv_args = self.backend.build_argv(action.key, target)
+        argv_preview = self.backend.preview_argv(list(argv_args))
         if not confirm_action(stdscr, action, argv_preview, target_label):
             self.state.status = "Cancelled."
             self.state.status_kind = "warn"
@@ -838,18 +832,18 @@ class App:
             audit.log(f"DRYRUN:{action.key}", argv_preview, 0,
                       f"target={target_label}")
             self.state.status = (
-                f"[fixture mode] would run: {self.runner.shell_repr(tuple(argv_preview))}"
+                f"[fixture mode] would run: {self.backend.shell_repr(tuple(argv_preview))}"
             )
             self.state.status_kind = "warn"
             message_modal(stdscr, "Fixture mode (dry run)",
                           ["No command was executed.",
                            "Unset MEGATUI_FIXTURES to run for real.",
                            "",
-                           f"  {self.runner.shell_repr(tuple(argv_preview))}"],
+                           f"  {self.backend.shell_repr(tuple(argv_preview))}"],
                           COLOR_INFO)
             return
 
-        result = self.runner.run(list(argv_args))
+        result = self.backend.run(list(argv_args))
         audit.log(action.key, list(result.argv), result.rc,
                   f"target={target_label} | " + (result.stdout or result.stderr))
         out_lines = (result.stdout or result.stderr or "(no output)").splitlines()
@@ -939,8 +933,9 @@ class App:
                 self.run_action(stdscr)
 
 
-def run(use_sudo: bool = True, fixture_mode: bool = False) -> int:
-    runner = Runner(use_sudo=use_sudo)
-    app = App(runner, fixture_mode=fixture_mode)
+def run(use_sudo: bool = True, fixture_mode: bool = False,
+        backend_name: str = "auto", fixtures_dir: str | None = None) -> int:
+    backend = detect(name=backend_name, use_sudo=use_sudo, fixtures_dir=fixtures_dir)
+    app = App(backend, fixture_mode=fixture_mode)
     curses.wrapper(app.loop)
     return 0

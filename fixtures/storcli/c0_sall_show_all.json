@@ -1,0 +1,84 @@
+{
+"Controllers":[
+{
+	"Command Status" : {
+		"CLI Version" : "007.2002.0000.0000 Oct 11, 2021",
+		"Operating system" : "Linux 6.17.0-29-generic",
+		"Controller" : 0,
+		"Status" : "Success",
+		"Description" : "Show Drive Information Succeeded."
+	},
+	"Response Data" : {
+		"Drive /c0/s0" : [
+			{
+				"EID:Slt" : " :0",
+				"DID" : 0,
+				"State" : "UGood",
+				"DG" : "-",
+				"Size" : "0 KB",
+				"Intf" : "SAS",
+				"Med" : "HDD",
+				"SED" : "-",
+				"PI" : "-",
+				"SeSz" : "0 KB",
+				"Model" : "X477_TTCRE04TA07",
+				"Sp" : "-"
+			}
+		],
+		"Drive /c0/s0 - Detailed Information" : {
+			"Drive /c0/s0 State" : {
+				"Shield Counter" : "N/A",
+				"Media Error Count" : "N/A",
+				"Other Error Count" : "N/A",
+				"Predictive Failure Count" : "N/A",
+				"S.M.A.R.T alert flagged by drive" : "N/A"
+			},
+			"Drive /c0/s0 Device attributes" : {
+				"Manufacturer Id" : "NETAPP  ",
+				"Model Number" : "X477_TTCRE04TA07",
+				"NAND Vendor" : "NA",
+				"SN" : "X7L0A1W4F9XC    ",
+				"WWN" : "500003983838705F",
+				"Firmware Revision" : "NA01",
+				"Raw size" : "0 KB [0x1d1c0beaf Sectors]",
+				"Coerced size" : "0 KB [0x1d1c0beaf Sectors]",
+				"Non Coerced size" : "0 KB [0x1d1c0beaf Sectors]",
+				"Device Speed" : "Unknown",
+				"Link Speed" : "12.0Gb/s",
+				"Sector Size" : "0 KB",
+				"Config ID" : "NA",
+				"Number of Blocks" : 7814037167,
+				"Connector Name" : "N/A"
+			},
+			"Drive /c0/s0 Policies/Settings" : {
+				"Enclosure position" : "-",
+				"Connected Port Number" : "2 ",
+				"Sequence Number" : 0,
+				"Commissioned Spare" : "No",
+				"Emergency Spare" : "No",
+				"Last Predictive Failure Event Sequence Number" : "N/A",
+				"Successful diagnostics completion on" : "N/A",
+				"SED Capable" : "N/A",
+				"SED Enabled" : "N/A",
+				"Secured" : "N/A",
+				"Needs EKM Attention" : "N/A",
+				"PI Eligible" : "N/A",
+				"Certified" : "N/A",
+				"Wide Port Capable" : "N/A",
+				"Multipath" : "No",
+				"Port Information" : [
+					{
+						"Port" : 0,
+						"Status" : "Active",
+						"Linkspeed" : "12.0Gb/s",
+						"SAS address" : "0x500003983838705d"
+					}
+				]
+			},
+			"Inquiry Data" : "00 00 06 12 5b 00 10 02 4e 45 54 41 50 50 20 20 58 34 37 37 5f 54 54 43 52 45 30 34 54 41 30 37 4e 41 30 31 41 31 57 34 46 39 58 43 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+		}
+	}
+}
+]
+}
+

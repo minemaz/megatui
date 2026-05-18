@@ -6,6 +6,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from megatui import actions, parsers  # noqa: E402
+from megatui.backends.megacli import MEGACLI_BUILDERS  # noqa: E402
 
 FIX = ROOT / "fixtures"
 
@@ -111,9 +112,8 @@ def test_pd_create_r0_action_gating() -> None:
     pd_actions = actions.applicable_actions("pd", hdd)
     keys = {a.key for a in pd_actions}
     assert "pd_create_r0" in keys
-    # Verify the produced argv is exactly the single-disk RAID0 form.
-    create = next(a for a in pd_actions if a.key == "pd_create_r0")
-    argv = create.build(hdd)
+    # Verify the produced argv (megacli backend) is the single-disk RAID0 form.
+    argv = MEGACLI_BUILDERS["pd_create_r0"](hdd)
     assert argv == ["-CfgLdAdd", "-r0", "[252:2]", "-a0"], argv
 
     # An Online HDD (from synthetic fixture) must NOT see the create action.
